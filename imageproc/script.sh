@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function print_usage() {
     printf "Usage: $0 <input-file.jpg> <output-file.jpg> <request-type>\n"
