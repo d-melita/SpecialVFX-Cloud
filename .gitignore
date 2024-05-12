@@ -1,0 +1,11 @@
+.vscode
+
+raytracer/target/*
+
+webserver/target/*
+
+imageproc/target/*
+
+raytracer/resources/*
+
+imageproc/resources/*
