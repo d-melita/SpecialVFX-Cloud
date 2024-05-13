@@ -1,15 +1,11 @@
 .vscode
 .idea
 
-raytracer/target/*
-
-webserver/target/*
-
-imageproc/target/*
-
-raytracer/resources/*
-
-imageproc/resources/*
+workers/raytracer/target/*
+workers/webserver/target/*
+workers/imageproc/target/*
+workers/raytracer/resources/*
+workers/imageproc/resources/*
 
 scripts/config.sh
 
