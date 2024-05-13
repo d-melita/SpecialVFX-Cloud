@@ -47,7 +47,7 @@ public class LoadBalancer implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        Optional<Instance> instance = getNextInstance();
+        Optional<Instance> instance = getLeastLoadedInstance();
 
         if (!instance.isPresent()) {
             exchange.sendResponseHeaders(500, 0);
