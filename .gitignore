@@ -10,3 +10,6 @@ imageproc/target/*
 raytracer/resources/*
 
 imageproc/resources/*
+
+monitoring/scripts/config.sh
+
