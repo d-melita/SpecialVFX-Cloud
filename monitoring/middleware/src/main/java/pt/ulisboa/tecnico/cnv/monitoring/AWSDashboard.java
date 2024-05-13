@@ -55,9 +55,6 @@ public class AWSDashboard{
             .withCredentials(new EnvironmentVariableCredentialsProvider())
             .withRegion(AWS_REGION)
             .build();
-
-        // get all instances
-        this.aliveInstances = getAliveInstances();
     }
 
     public Set<Instance> getAliveInstances() {
@@ -141,23 +138,6 @@ public class AWSDashboard{
             }
         }
     }
-
-    // get all instances as upon start there might be instances already running that we want to add to the set
-    public Set<Instance> getAliveInstances() {
-        // get all instances
-        Set<Instance> instances = new HashSet<Instance>();
-
-        List<Reservation> reservations = this.ec2.describeInstances().getReservations();
-        for (Reservation reservation : reservations) {
-            for (Instance instance : reservation.getInstances()) {
-                if (instance.getState().getName().equals("running")) {
-                    instances.add(instance);
-                }
-        }
-
-        return instances;
-    }
-
 
     // get cpu usage of an instance
     public double getCpuUsage(Instance instance) {

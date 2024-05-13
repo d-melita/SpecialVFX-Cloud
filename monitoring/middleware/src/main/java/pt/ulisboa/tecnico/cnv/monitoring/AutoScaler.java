@@ -10,6 +10,8 @@ public class AutoScaler {
 
         if (this.awsDashboard.getAliveInstances().size() == 0) {
             this.awsDashboard.createInstance(1);
+        } else {
+            throw new RuntimeException("Instances running");
         }
     }
 
@@ -26,7 +28,7 @@ public class AutoScaler {
     }
 
     private void update() {
-        // get all cpu usage, if average is above 80% create a new instance if below 20% terminate one
+        // get all cpu usage, if average is above 75% create a new instance if below 25% terminate one
         List<Pair<String, Double>> cpuUsage = new ArrayList<Double>();
 
         for (Instance instance : this.awsDashboard.getInstances()) {
