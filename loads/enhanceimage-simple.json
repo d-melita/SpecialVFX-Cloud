@@ -1,0 +1,7 @@
+[
+	{
+		"type": "enhance",
+		"input": "bird.jpg",
+		"output": "bird.out.jpg"
+	}
+]

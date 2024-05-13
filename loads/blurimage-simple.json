@@ -1,0 +1,7 @@
+[
+	{
+		"type": "blur",
+		"input": "bird.jpg",
+		"output": "bird.out.jpg"
+	}
+]

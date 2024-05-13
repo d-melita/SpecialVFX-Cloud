@@ -1,0 +1,24 @@
+[
+	{
+		"type": "blur",
+		"input": "bird.jpg",
+		"output": "bird.out.jpg",
+		"reps": 10
+	},
+	{
+		"type": "enhance",
+		"input": "bird.jpg",
+		"output": "bird.out.jpg"
+	},
+	{
+		"type": "ray-tracer",
+		"input": "test01.txt",
+		"output": "dsa-random",
+		"scols": 400,
+		"srows": 300,
+		"wcols": 400,
+		"wrows": 300,
+		"coff": 0,
+		"roff": 0
+	}
+]
