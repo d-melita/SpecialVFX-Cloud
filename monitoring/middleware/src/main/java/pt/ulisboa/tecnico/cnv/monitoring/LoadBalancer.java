@@ -33,7 +33,7 @@ public class LoadBalancer implements HttpHandler {
         Thread t = new Thread(() -> {
             while (true) {
                 for (Instance instance : this.awsDashboard.getAliveInstances()) {
-                    this.awsDashboard.updateCpuUsage(instance);
+                    this.awsDashboard.getCpuUsage(instance);
                 }
                 try {
                     Thread.sleep(TIMER);
