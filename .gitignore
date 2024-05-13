@@ -1,14 +1,19 @@
-.vscode
+.DS_Store
+.idea
+*.log
+tmp/
 
-raytracer/target/*
+*.class
+build
 
-webserver/target/*
-
-imageproc/target/*
-
-raytracer/resources/*
-
-imageproc/resources/*
-
+.direnv/
 flake.nix
 flake.lock
+
+.vscode/
+
+raytracer/target/*
+webserver/target/*
+imageproc/target/*
+raytracer/resources/*
+imageproc/resources/*
