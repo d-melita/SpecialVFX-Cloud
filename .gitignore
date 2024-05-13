@@ -11,5 +11,5 @@ raytracer/resources/*
 
 imageproc/resources/*
 
-monitoring/scripts/config.sh
+scripts/config.sh
 
