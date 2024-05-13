@@ -20,8 +20,29 @@ public class LoadBalancer implements HttpHandler {
 
     private List<String, List<Requests>> requests;
 
+    private static final int TIMER = 10000;
+
+    List<Pair<String, Double>> cpuUsage = new ArrayList<Double>();
+
     public LoadBalancer(AWSDashboard awsDashboard) {
         super();
+        getCpuUsage();
+    }
+
+    private void getCpuUsage() {
+        Thread t = new Thread(() -> {
+            while (true) {
+                for (Instance instance : this.awsDashboard.getAliveInstances()) {
+                    this.awsDashboard.updateCpuUsage(instance);
+                }
+                try {
+                    Thread.sleep(TIMER);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        t.start();
     }
 
     // get next instance in a round robin fashion
@@ -36,13 +57,20 @@ public class LoadBalancer implements HttpHandler {
     }
 
     private Optional<Instance> getLeastLoadedInstance() {
-        List<Pair<String, Double>> cpuUsage = new ArrayList<Double>();
-
-        for (Instance instance : this.awsDashboard.getAliveInstances()) {
-            cpuUsage.add(new Pair<String, Double>(instance.getInstanceId(), this.awsDashboard.getCpuUsage(instance)));
+        private Optional<Instance> getLeastLoadedInstance() {
+        if (cpuUsage.isEmpty()) {
+            return getNextInstance();
         }
-
-        return Optional.of(cpuUsage.stream().min((p1, p2) -> p1.getValue().compareTo(p2.getValue())).get().getKey());
+    
+        // Find the pair with the minimum CPU usage
+        Pair<String, Double> leastLoaded = cpuUsage.stream()
+            .min(Comparator.comparing(Pair::getValue))
+            .orElseThrow(); // This will not throw since we checked that the list is not empty
+    
+        // Assuming getInstanceById retrieves an Instance by its String identifier
+        return Optional.of(awsDashboard.getAliveInstances.getInstanceById(leastLoaded.getKey()));
+        }
+        
     }
 
     @Override
