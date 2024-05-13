@@ -57,7 +57,6 @@ public class LoadBalancer implements HttpHandler {
     }
 
     private Optional<Instance> getLeastLoadedInstance() {
-        private Optional<Instance> getLeastLoadedInstance() {
         if (cpuUsage.isEmpty()) {
             return getNextInstance();
         }
@@ -69,8 +68,6 @@ public class LoadBalancer implements HttpHandler {
     
         // Assuming getInstanceById retrieves an Instance by its String identifier
         return Optional.of(awsDashboard.getAliveInstances.getInstanceById(leastLoaded.getKey()));
-        }
-        
     }
 
     @Override
