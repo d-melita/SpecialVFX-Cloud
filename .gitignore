@@ -9,3 +9,6 @@ imageproc/target/*
 raytracer/resources/*
 
 imageproc/resources/*
+
+flake.nix
+flake.lock
