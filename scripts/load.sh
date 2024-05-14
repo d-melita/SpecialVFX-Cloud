@@ -6,7 +6,7 @@ function parse_blur {
     out="resources/$(echo $obj | jq -r '.output')"
     echo "Parsing blur (in=$in, out=$out)"
 
-    pushd imageproc
+    pushd ../imageproc
     ./script.sh "$in" "$out" blurimage
     popd
 }
@@ -17,7 +17,7 @@ function parse_enhance {
     out="resources/$(echo $obj | jq -r '.output')"
     echo "Parsing enhance (in=$in, out=$out)"
 
-    pushd imageproc
+    pushd ../imageproc
     ./script.sh "$in" "$out" enhanceimage
     popd
 }
@@ -43,7 +43,7 @@ function parse_raytracer {
 
     echo "Parsing raytracer (in=$in, texture=$text, out=$out)"
 
-    pushd raytracer
+    pushd ../raytracer
     ./script.sh $in $out $scols $srows $wcols $wrows $coff $roff $text
     popd
 }
@@ -72,13 +72,28 @@ function parse() {
     esac
 }
 
-#
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <load_config>"
+function run_client() {
+    for request in $(cat $load_config | jq -c '.[]'); do
+        reps=$(echo $request | jq -r '.reps // empty')
+
+        if [ -z "$reps" ]; then
+            reps=1
+        fi
+
+        echo "Running $reps repetitions"
+        for i in $(seq 1 $reps); do
+            parse $request
+        done
+    done
+}
+
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <load_config> <client_count>"
     exit 1
 fi
 
 load_config="$1"
+client_count=$2
 
 if [ ! -f "$load_config" ]; then
     echo "Config file not found: $load_config"
@@ -87,16 +102,5 @@ fi
 
 echo "Loading configuration from: $load_config"
 
-for request in $(cat $load_config | jq -c '.[]'); do
-    reps=$(echo $request | jq -r '.reps // empty')
-
-    if [ -z "$reps" ]; then
-        reps=1
-    fi
-
-    echo "Running $reps repetitions"
-    for i in $(seq 1 $reps); do
-        parse $request
-    done
-done
-
+run_client;
+# For each client run 
