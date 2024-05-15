@@ -15,15 +15,14 @@ public class WebServer {
 
         // Auto Scaler
         AutoScaler autoScaler = new AutoScaler(awsDashboard);
-        Thread autoScalerThread = new Thread(autoScaler);
         autoScalerThread.start();
         System.out.println("AutoScaler started...");
 
         // Load Balancer
-        HttpServer server = HttpServer.create(new InetSocketAddress(8001), 0);
-        server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
-        server.createContext("/", new LoadBalancerHandler(awsDashboard));
-        server.start();
-        System.out.println("LoadBalancer started on port 8001...");
+        LoadBalancer loadBalancer = new LoadBalancer(awsDashboard);
+        loadBalancer.start();
+        System.out.println("LoadBalancer started on port 8000...");
+
+        // create instance monitor
     }
 }

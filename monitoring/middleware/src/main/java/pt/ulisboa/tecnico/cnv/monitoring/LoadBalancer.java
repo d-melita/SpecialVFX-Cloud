@@ -26,23 +26,7 @@ public class LoadBalancer implements HttpHandler {
 
     public LoadBalancer(AWSDashboard awsDashboard) {
         super();
-        getCpuUsage();
-    }
-
-    private void getCpuUsage() {
-        Thread t = new Thread(() -> {
-            while (true) {
-                for (Instance instance : this.awsDashboard.getAliveInstances()) {
-                    this.awsDashboard.getCpuUsage(instance);
-                }
-                try {
-                    Thread.sleep(TIMER);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        t.start();
+        // getCpuUsage(); -> monitor
     }
 
     // get next instance in a round robin fashion
@@ -118,5 +102,11 @@ public class LoadBalancer implements HttpHandler {
             exchange.sendResponseHeaders(500, 0);
         }
         exchange.close();
+    }
+
+    public void start() {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
+        server.createContext("/", this);
     }
 }
