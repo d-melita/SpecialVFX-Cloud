@@ -1,4 +1,4 @@
-.DS_Store
+DS_Store
 .idea
 *.log
 tmp/
@@ -17,5 +17,6 @@ webserver/target/*
 imageproc/target/*
 javassist/target/*
 middleware/target/*
+middleware/target/maven-status/*
 raytracer/resources/*
 imageproc/resources/*
