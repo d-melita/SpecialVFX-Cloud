@@ -5,14 +5,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import com.sun.net.httpserver.HttpHandler;
 import com.amazonaws.services.ec2.model.Instance;
 import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 
 public class LoadBalancer implements HttpHandler {
 
@@ -22,49 +22,38 @@ public class LoadBalancer implements HttpHandler {
 
     private static final int TIMER = 10000;
 
-    private LBPolicy policy;
+    //private LBPolicy policy;
 
     public LoadBalancer(AWSDashboard awsDashboard) {
         this.awsDashboard = awsDashboard;
     }
+    private Optional<Instance> getLeastLoadedInstance() {
+        List<Pair<Instance, Double>> instances = new ArrayList<>();
+        for (Instance instance : this.awsDashboard.getMetrics().keySet()) {
+            double cpuUsage = this.awsDashboard.getMetrics().get(instance).get().getCpuUsage();
+            instances.add(new Pair<>(instance, cpuUsage));
+        }
 
-    // get next instance in a round robin fashion
-    private Optional<Instance> getNextInstance() {
-        List<Instance> instances = new ArrayList<Instance>(this.awsDashboard.getAliveInstances());
-
-        if (instances.isEmpty()) {
+        // get instance with the least cpu usage
+        Optional<Pair<Instance, Double>> optInstance = instances.stream().min(Comparator.comparing(Pair::getValue));
+        if (!optInstance.isPresent()) {
             return Optional.empty();
         }
-
-        return Optional.of(instances.get(this.awsDashboard.getAndIncrementIid()));
-    }
-
-    private Optional<Instance> getLeastLoadedInstance() {
-        if (cpuUsage.isEmpty()) {
-            return getNextInstance();
-        }
-    
-        // Find the pair with the minimum CPU usage
-        Pair<String, Double> leastLoaded = cpuUsage.stream()
-            .min(Comparator.comparing(Pair::getValue))
-            .orElseThrow(); // This will not throw since we checked that the list is not empty
-    
-        // Assuming getInstanceById retrieves an Instance by its String identifier
-        return Optional.of(awsDashboard.getAliveInstances.getInstanceById(leastLoaded.getKey()));
+        return Optional.of(optInstance.get().getKey());
     }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         // FIXME: proper forwarding
-        Optional<Instance> instance = getLeastLoadedInstance();
+        Optional<Instance> optInstance = getLeastLoadedInstance();
 
-        if (!instance.isPresent()) {
+        if (!optInstance.isPresent()) {
             exchange.sendResponseHeaders(500, 0);
             exchange.close();
             return;
         }
 
-        Instance instance = instance.get();
+        Instance instance = optInstance.get();
         Request request = new Request(exchange.getRequestURI().toString());
 
         // add request to requests list
@@ -102,5 +91,13 @@ public class LoadBalancer implements HttpHandler {
             exchange.sendResponseHeaders(500, 0);
         }
         exchange.close();
+    }
+
+    public void start() throws IOException {
+        // TODO - Check if correct
+        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
+        server.createContext("/", new LoadBalancer(this.awsDashboard));
+        server.start();
     }
 }

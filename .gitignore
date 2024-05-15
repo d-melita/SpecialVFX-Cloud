@@ -16,5 +16,6 @@ raytracer/target/*
 webserver/target/*
 imageproc/target/*
 javassist/target/*
+middleware/target/*
 raytracer/resources/*
 imageproc/resources/*

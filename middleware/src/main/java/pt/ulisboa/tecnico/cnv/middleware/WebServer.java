@@ -5,6 +5,8 @@ import pt.ulisboa.tecnico.cnv.middleware.AutoScaler;
 import pt.ulisboa.tecnico.cnv.middleware.AWSDashboard;
 import java.net.InetSocketAddress;
 import com.sun.net.httpserver.HttpServer;
+import pt.ulisboa.tecnico.cnv.middleware.policies.ASPolicy;
+import pt.ulisboa.tecnico.cnv.middleware.policies.CpuBasedScaling;
 
 
 public class WebServer {
@@ -14,8 +16,8 @@ public class WebServer {
         AWSDashboard awsDashboard = new AWSDashboard();
 
         // Auto Scaler
-        AutoScaler autoScaler = new AutoScaler(awsDashboard);
-        autoScalerThread.start();
+        AutoScaler autoScaler = new AutoScaler(awsDashboard, new CpuBasedScaling(25, 75));
+        autoScaler.start();
         System.out.println("AutoScaler started...");
 
         // Load Balancer
@@ -23,6 +25,6 @@ public class WebServer {
         loadBalancer.start();
         System.out.println("LoadBalancer started on port 8000...");
 
-        // create instance monitor
+        // TODO - create instance monitor
     }
 }

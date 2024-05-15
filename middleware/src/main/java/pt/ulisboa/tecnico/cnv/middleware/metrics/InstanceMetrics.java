@@ -1,4 +1,4 @@
-package pt.ulisboa.tecnico.cnv.middleware;
+package pt.ulisboa.tecnico.cnv.middleware.metrics;
 
 import pt.ulisboa.tecnico.cnv.webserver.WorkerMetric;
 

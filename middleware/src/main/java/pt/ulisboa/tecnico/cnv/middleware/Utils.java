@@ -1,5 +1,7 @@
+package pt.ulisboa.tecnico.cnv.middleware;
+
 public class Utils {
-    protected static class Pair<K, V> {
+    public static class Pair<K, V> {
         private K key;
         private V value;
     

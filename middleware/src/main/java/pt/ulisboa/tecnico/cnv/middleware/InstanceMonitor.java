@@ -1,5 +1,22 @@
 package pt.ulisboa.tecnico.cnv.middleware;
 
+import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
+import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
+import pt.ulisboa.tecnico.cnv.webserver.WorkerMetric;
+import com.amazonaws.services.cloudwatch.model.Datapoint;
+import com.amazonaws.services.cloudwatch.model.Dimension;
+import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
+import com.amazonaws.services.ec2.model.Instance;
+import java.util.Date;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.ProtocolException;
+import java.net.URL;
+
 public class InstanceMonitor {
 
     private static final String AWS_REGION = System.getenv("AWS_REGION");
@@ -25,24 +42,19 @@ public class InstanceMonitor {
 
         this.awsDashboard = awsDashboard;
     }
-
-    public Map<Instance, InstanceMetrics> getMetrics(){
-        return this.metrics;
-    }
-
     private void update() {
         for(Instance instance : this.awsDashboard.getMetrics().keySet()) {
             double cpuUsage = this.getCpuUsage(instance);
             // get metrics from workers
-            WorkerMetric metric = this.getMetric(instance);
+            //WorkerMetric metric = this.getMetric(instance);
             
             // update the metrics or add if not present
-            this.metrics.put(instance, new InstanceMetrics(metric, cpuUsage));
+            //this.awsDashboard.getMetrics().put(instance, new InstanceMetrics(metric, cpuUsage));
             // TODO - check if metrics actually have smth
         }
     }
 
-    public WorkerMetric getMetric(Instance instance) {
+    public void getMetric(Instance instance) throws IOException {
         // TODO - FIXME
 
         URL url = new URL("http://" + instance.getPublicDnsName() + ":8000/stats");
@@ -59,7 +71,7 @@ public class InstanceMonitor {
         in.close();
         con.disconnect();
 
-        return new WorkerMetric(instance.getInstanceId(), content.toString());
+        // TODO - Finish - return WorkerMetric - change on signature
     }
 
     /**
@@ -90,8 +102,8 @@ public class InstanceMonitor {
     }
 
     public void start() {
-        this.daemon = new Thread(this);
-    }
+        this.daemon = new Thread(this.toString());
+    }  // TODO - check
 
     public void run() {
         while (true) {
