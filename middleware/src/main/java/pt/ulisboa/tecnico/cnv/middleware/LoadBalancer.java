@@ -22,26 +22,10 @@ public class LoadBalancer implements HttpHandler {
 
     private static final int TIMER = 10000;
 
-    List<Pair<String, Double>> cpuUsage = new ArrayList<Double>();
+    private LBPolicy policy;
 
     public LoadBalancer(AWSDashboard awsDashboard) {
-        getCpuUsage();
-    }
-
-    private List<Double> getCpuUsage() {
-        Thread t = new Thread(() -> {
-            while (true) {
-                for (Instance instance : this.awsDashboard.getAliveInstances()) {
-                    this.awsDashboard.getCpuUsage(instance);
-                }
-                try {
-                    Thread.sleep(TIMER);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        t.start();
+        this.awsDashboard = awsDashboard;
     }
 
     // get next instance in a round robin fashion
@@ -71,6 +55,7 @@ public class LoadBalancer implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        // FIXME: proper forwarding
         Optional<Instance> instance = getLeastLoadedInstance();
 
         if (!instance.isPresent()) {

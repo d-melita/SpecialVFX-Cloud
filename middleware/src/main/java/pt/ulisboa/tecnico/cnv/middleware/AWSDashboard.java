@@ -46,6 +46,7 @@ public class AWSDashboard{
     }
 
     public Map<Instance, InstanceMetrics> getMetrics(){
+        // FIXME: return copy, not the actual live metrics
         return this.metrics;
     }
     

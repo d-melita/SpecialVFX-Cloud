@@ -1,11 +1,19 @@
 package pt.ulisboa.tecnico.cnv.middleware;
 
+import java.util.Map;
+
+import pt.ulisboa.tecnico.cnv.middleware.ASPolicy;
+import pt.ulisboa.tecnico.cnv.middleware.ScalingDecision;
+
+import com.amazonaws.services.ec2.model.Instance;
+
 public class AutoScaler {
 
     private static final String AWS_KEYPAIR_NAME = System.getenv("AWS_KEYPAIR_NAME");
     private static final String AWS_SECURITY_GROUP = System.getenv("AWS_SECURITY_GROUP");
     private static final String AWS_AMI_ID = System.getenv("AWS_AMI_ID");
 
+    private ASPolicy policy;
     private AmazonEC2 ec2;
 
     AWSDashboard awsDashboard;
@@ -13,18 +21,16 @@ public class AutoScaler {
 
     private static final int TIMER = 10000; // 10 seconds
 
-    public AutoScaler(AWSDashboard awsDashboard) {
+    public AutoScaler(AWSDashboard awsDashboard, ASPolicy policy) {
+        this.awsDashboard = awsDashboard;
+        this.policy = policy;
+
         this.ec2 = AmazonEC2ClientBuilder.standard()
             .withCredentials(new EnvironmentVariableCredentialsProvider())
             .withRegion(AWS_REGION)
             .build();
-        this.awsDashboard = awsDashboard;
 
-        if (this.awsDashboard.getAliveInstances().size() == 0) {
-            this.awsDashboard.createInstance(1);
-        } else {
-            throw new RuntimeException("Instances running");
-        }
+        this.createInstance();
     }
 
     public void run() {
@@ -41,19 +47,17 @@ public class AutoScaler {
 
     private void update() {
         // get all cpu usage, if average is above 75% create a new instance if below 25% terminate one
-        List<Pair<String, Double>> cpuUsage = new ArrayList<Double>();
+        Map<Instance, InstanceMetrics> metrics = this.awsDashboard.getMetrics();
+        switch (policy.evaluate(metrics)) {
+            // TODO: fill this in
+            case value:
+                
+                break;
 
-        for (Instance instance : this.awsDashboard.getInstances()) {
-            cpuUsage.add(new Pair<String, Double>(instance.getInstanceId(), this.awsDashboard.getCpuUsage(instance)));
+            default:
+                break;
         }
 
-        double average = cpuUsage.stream().mapToDouble(Pair::getValue).average().orElse(0.0);
-
-        if (average > 75) {
-            this.awsDashboard.createInstance(1);
-        } else if (average < 25 && this.awsDashboard.getAliveInstances().size() > 1) {
-            this.awsDashboard.terminateInstance();
-        }
     }
 
     public void createInstance() {
