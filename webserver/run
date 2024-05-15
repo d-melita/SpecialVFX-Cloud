@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-AGENT=VFXAgent
+TOOL=VFXICount
 PKG_NAMES=pt.ulisboa.tecnico.cnv.imageproc,pt.ulisboa.tecnico.cnv.raytracer
 WRITE_DEST=output
 JAVASSIST_JAR_PATH=../javassist/target/javassist-1.0.0-SNAPSHOT-jar-with-dependencies.jar
@@ -10,5 +10,5 @@ JAVASSIST_JAR_PATH=../javassist/target/javassist-1.0.0-SNAPSHOT-jar-with-depende
 echo "Starting server"
 java \
 	-cp target/webserver-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
-	-javaagent:$JAVASSIST_JAR_PATH=$AGENT:$PKG_NAMES:$WRITE_DEST \
+	-javaagent:$JAVASSIST_JAR_PATH=$TOOL:$PKG_NAMES:$WRITE_DEST \
 	pt.ulisboa.tecnico.cnv.webserver.WebServer

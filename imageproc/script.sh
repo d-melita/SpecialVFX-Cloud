@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# host=cnv-proj-lb-857563010.us-east-1.elb.amazonaws.com
+host=127.0.0.1
+
 function print_usage() {
     printf "Usage: $0 <input-file.jpg> <output-file.jpg> <request-type>\n"
     printf "  <request-type> - blurimage or enhanceimage.\n"
@@ -27,7 +30,7 @@ function send_request() {
     local temp_file="resources/temp.txt"
     local result_file="resources/result.txt"
     local endpoint_path=$1
-    if ! curl -X POST "http://127.0.0.1:8000/$endpoint_path" --data @"$temp_file" > "$result_file"; then
+    if ! curl -X POST "http://$host:8000/$endpoint_path" --data @"$temp_file" > "$result_file"; then
         printf "Failed to send request to the server.\n" >&2
         return 1
     fi

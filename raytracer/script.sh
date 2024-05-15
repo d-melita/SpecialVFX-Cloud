@@ -1,5 +1,7 @@
-
 #!/usr/bin/env bash
+
+# host=cnv-proj-lb-857563010.us-east-1.elb.amazonaws.com
+host=127.0.0.1
 
 function print_usage() {
     printf "Usage: $0 <input-file.txt> <output-file.bmp> [<texture-file.bmp>]\n"
@@ -33,8 +35,8 @@ function send_request() {
     local coff=$5
     local roff=$6
 
-    echo "Requesting to: http://127.0.0.1:8000/raytracer?scols=$scols&srows=$srows&wcols=$wcols&wrows=$wrows&coff=$coff&roff=$roff&aa=false"
-    if ! curl -X POST "http://127.0.0.1:8000/raytracer?scols=$scols&srows=$srows&wcols=$wcols&wrows=$wrows&coff=$coff&roff=$roff&aa=false" --data "@./resources/payload.json" > resources/result.txt; then
+    echo "Requesting to: http://$host:8000/raytracer?scols=$scols&srows=$srows&wcols=$wcols&wrows=$wrows&coff=$coff&roff=$roff&aa=false"
+    if ! curl -X POST "http://$host:8000/raytracer?scols=$scols&srows=$srows&wcols=$wcols&wrows=$wrows&coff=$coff&roff=$roff&aa=false" --data "@./resources/payload.json" > resources/result.txt; then
         printf "Failed to send request to the server.\n" >&2
         return 1
     fi

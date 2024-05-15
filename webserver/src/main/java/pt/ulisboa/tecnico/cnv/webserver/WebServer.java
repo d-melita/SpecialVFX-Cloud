@@ -5,7 +5,11 @@ import java.io.IOException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.io.BufferedWriter;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.time.Instant;
+import java.util.Map;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
@@ -14,12 +18,13 @@ import pt.ulisboa.tecnico.cnv.imageproc.BlurImageHandler;
 import pt.ulisboa.tecnico.cnv.imageproc.EnhanceImageHandler;
 import pt.ulisboa.tecnico.cnv.raytracer.RaytracerHandler;
 
-import pt.ulisboa.tecnico.cnv.javassist.tools.VFXAgent;
+import pt.ulisboa.tecnico.cnv.javassist.tools.VFXICount;
 
 public class WebServer {
 
     private static String outFile = "/tmp/randomFileForLogs.dsa";
-    private static BlockingQueue<String> pendingWrites = new LinkedBlockingQueue<>();
+    private static BlockingQueue<WorkerMetric> pendingStats = new LinkedBlockingQueue<>();
+    private static BlockingQueue<WorkerMetric> statsServiceQueue = new LinkedBlockingQueue<>();
 
     /**
      * wraps a given handler
@@ -34,12 +39,16 @@ public class WebServer {
 
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("just got a request");
-            VFXAgent.resetStats();
+            VFXICount.resetStats();
             this.handler.handle(exchange);
-            VFXAgent.VFXMetrics metrics = VFXAgent.getStats();
+            Map<String, Long> rawStats = VFXICount.getStats();
+
+            // enrich raw stats with context
+            WorkerMetric metric = new WorkerMetric(exchange.getRequestURI().toString(), rawStats, Instant.now());
+
             try {
-                pendingWrites.put(metrics.toString());
-                System.out.printf("request done - %s\n", metrics.toString());
+                pendingStats.put(metric);
+                System.out.printf("request done - %s\n", metric.toString());
             } catch (InterruptedException e) {
                 // TODO: check if I don't want to die
                 e.printStackTrace();
@@ -47,26 +56,37 @@ public class WebServer {
         }
     }
 
-    private static void handleWrites() {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outFile))) {
-            // Add flush as shutdown hook
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try {
-                    writer.flush();
-                    writer.close();
-                    System.out.println("flushed pending writes");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }));
+    /**
+     * Pushes metrics to shared storage/file/makes it available for the AS/LB.
+     */
+    private static void pushMetric(WorkerMetric metric) {
+        pushMetricToFile(metric);
+        pushMetricToService(metric);
+    }
 
-            while (true) {
-                writer.write(pendingWrites.take());
-                writer.newLine();
-            }
-        } catch (IOException e) {
-            System.err.println("Error writing to file: " + e.getMessage());
+    private static void pushMetricToDynamo(WorkerMetric metric) {
+        // TODO
+    }
+
+    private static void pushMetricToService(WorkerMetric metric) {
+        try {
+            statsServiceQueue.put(metric);
+        } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static void pushMetricToFile(WorkerMetric metric) {
+        try (ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(outFile))) {
+            outputStream.writeObject(metric);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void handleWrites() {
+        try {
+            while (true) pushMetric(pendingStats.take());
         } catch (InterruptedException e) {
             // TODO: check if I don't want to die
             e.printStackTrace();
@@ -85,6 +105,7 @@ public class WebServer {
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.createContext("/", new WrapperHandler(new RootHandler()));
+        server.createContext("/stats", new StatsHandler(statsServiceQueue));
         server.createContext("/raytracer", new WrapperHandler(new RaytracerHandler()));
         server.createContext("/blurimage", new WrapperHandler(new BlurImageHandler()));
         server.createContext("/enhanceimage", new WrapperHandler(new EnhanceImageHandler()));
