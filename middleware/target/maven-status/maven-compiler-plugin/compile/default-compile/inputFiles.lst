@@ -1,0 +1,7 @@
+/home/dsa/work/ist/year4/cloud-computing-and-virtualization/project/middleware/src/main/java/pt/ulisboa/tecnico/cnv/middleware/WebServer.java
+/home/dsa/work/ist/year4/cloud-computing-and-virtualization/project/middleware/src/main/java/pt/ulisboa/tecnico/cnv/middleware/Utils.java
+/home/dsa/work/ist/year4/cloud-computing-and-virtualization/project/middleware/src/main/java/pt/ulisboa/tecnico/cnv/middleware/AWSDashboard.java
+/home/dsa/work/ist/year4/cloud-computing-and-virtualization/project/middleware/src/main/java/pt/ulisboa/tecnico/cnv/middleware/LoadBalancer.java
+/home/dsa/work/ist/year4/cloud-computing-and-virtualization/project/middleware/src/main/java/pt/ulisboa/tecnico/cnv/middleware/Request.java
+/home/dsa/work/ist/year4/cloud-computing-and-virtualization/project/middleware/src/main/java/pt/ulisboa/tecnico/cnv/middleware/LoadBalancerHandler.java
+/home/dsa/work/ist/year4/cloud-computing-and-virtualization/project/middleware/src/main/java/pt/ulisboa/tecnico/cnv/middleware/AutoScaler.java
