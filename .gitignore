@@ -15,5 +15,6 @@ flake.lock
 raytracer/target/*
 webserver/target/*
 imageproc/target/*
+javassist/target/*
 raytracer/resources/*
 imageproc/resources/*
