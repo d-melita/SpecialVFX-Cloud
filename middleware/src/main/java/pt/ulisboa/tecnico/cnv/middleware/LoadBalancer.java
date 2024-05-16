@@ -15,7 +15,7 @@ import java.net.InetSocketAddress;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 import pt.ulisboa.tecnico.cnv.middleware.policies.LBPolicy;
 
-public class LoadBalancer implements HttpHandler {
+public class LoadBalancer implements HttpHandler, Runnable {
 
     private AWSDashboard awsDashboard;
 
@@ -24,6 +24,8 @@ public class LoadBalancer implements HttpHandler {
     private static final int PORT = 8000;
 
     private LBPolicy policy;
+
+    private Thread daemon;
 
     public LoadBalancer(AWSDashboard awsDashboard, LBPolicy policy) {
         this.awsDashboard = awsDashboard;
@@ -79,7 +81,7 @@ public class LoadBalancer implements HttpHandler {
     private void replyToClient(HttpExchange exchange, HttpURLConnection con) throws IOException {
 
 
-
+        /*
         // Copy response headers from the instance
         for (String headerName : con.getHeaderFields().keySet()) {
             if (headerName != null) {
@@ -95,7 +97,7 @@ public class LoadBalancer implements HttpHandler {
                 output.write(buffer, 0, bytesRead);
             }
         }
-
+        */
 
 
 
@@ -119,11 +121,21 @@ public class LoadBalancer implements HttpHandler {
         exchange.close();
     }
 
-    public void start() throws IOException {
+    public void run() {
         // TODO - Check if correct
-        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        HttpServer server = null;
+        try {
+            server = HttpServer.create(new InetSocketAddress(PORT), 0);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.createContext("/", this);
         server.start();
+    }
+
+    public void start() {
+        this.daemon = new Thread(this);
+        daemon.start();
     }
 }
