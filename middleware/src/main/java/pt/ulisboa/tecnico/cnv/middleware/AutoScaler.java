@@ -19,7 +19,7 @@ import com. amazonaws. services. ec2.model. TerminateInstancesResult;
 import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
 import pt.ulisboa.tecnico.cnv.middleware.policies.ASPolicy;
 
-public class AutoScaler {
+public class AutoScaler implements Runnable {
     private ASPolicy policy;
 
     private AWSDashboard awsDashboard;
@@ -33,7 +33,9 @@ public class AutoScaler {
         this.policy = policy;
         this.awsInterface = awsInterface;
 
-        awsInterface.createInstance();
+        Worker worker = awsInterface.createInstance();
+        System.out.println("Instance created, registering in dashboard");
+        this.awsDashboard.registerInstance(worker);
     }
 
     public void run() {
@@ -49,15 +51,20 @@ public class AutoScaler {
     }
 
     private void update() {
-        // get all cpu usage, if average is above 75% create a new instance if below 25% terminate one
-        Map<Instance, Optional<InstanceMetrics>> metrics = this.awsDashboard.getMetrics();
+        Map<Worker, Optional<InstanceMetrics>> metrics = this.awsDashboard.getMetrics();
+        Worker worker;
         switch (policy.evaluate(metrics, this.awsDashboard.getMetrics().keySet().size())) {
-            // TODO: fill this in
             case Increase:
-                awsInterface.createInstance();
+                System.out.println("Decided to create a new instance");
+                worker = awsInterface.createInstance();
+                System.out.println("Instance created, registering in dashboard");
+                this.awsDashboard.registerInstance(worker);
                 break;
             case Reduce:
-                awsInterface.forceTerminateInstance();
+                System.out.println("Decided to delete an instance");
+                worker = awsInterface.forceTerminateInstance();
+                System.out.println("Instance destroyed, deregistering in dashboard");
+                this.awsDashboard.unregisterInstance(worker);
                 break;
             default:
                 break;
@@ -65,10 +72,9 @@ public class AutoScaler {
 
     }
 
-    // FIXME
     public void start() {
-        daemon = new Thread(String.valueOf(this)); // TODO - Check this
-        daemon.run();
+        daemon = new Thread(this);
+        daemon.start();
     }
 
     public void waitFor() {

@@ -33,9 +33,9 @@ public class Request {
      */
     public Request(String URI) {
 
-        String[] parts = URI.split("\\?");
+        String[] parts = URI.split("/")[0].split("?");
 
-        switch (parts[0].split("/")[1]) {
+        switch (parts[0]) {
             case "blur":
                 this.endpoint = Endpoint.BLUR;
                 break;
@@ -45,6 +45,9 @@ public class Request {
             case "raytracer":
                 this.endpoint = Endpoint.RAYTRACER;
                 break;
+            default:
+                System.out.println("Unknown request type");
+                throw new RuntimeException("tried to create unknow ");
         }
 
         List<String> arguments = new ArrayList<String>();

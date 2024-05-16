@@ -9,6 +9,10 @@ public class ProductionWorker extends Worker {
     this.instance = instance;
   }
 
+  public String getId() {
+    return instance.getInstanceId();
+  }
+
   public String getIP() {
     return instance.getPublicIpAddress();
   }
@@ -16,5 +20,9 @@ public class ProductionWorker extends Worker {
   public int getPort() {
     // FIXME move constant to web server
     return LoadBalancer.WORKER_PORT;
+  }
+
+  public Instance getInstance() {
+    return this.instance;
   }
 }

@@ -32,10 +32,12 @@ public class InstanceMonitor implements Runnable {
 
     // Time to wait until the instance is terminated (in milliseconds).
     private static long WAIT_TIME = 1000 * 60 * 10;
+
     // Total observation time in milliseconds.
     private static long OBS_TIME = 1000 * 60 * 20;
+
     // Time between each query for instance state
-    private static long QUERY_COOLDOWN = 1000 * 10;
+    private static long QUERY_COOLDOWN = 1000 * 2;
 
     private static final int PORT = 8000;
 
@@ -47,25 +49,31 @@ public class InstanceMonitor implements Runnable {
     }
 
     private void update() throws IOException, ClassNotFoundException {
-        for(Instance instance : this.awsDashboard.getMetrics().keySet()) {
-            double cpuUsage = awsInterface.getCpuUsage(instance);
+        System.out.printf("Updating metrics on replicas (there are %d)\n", awsDashboard.getMetrics().size());
+        for(Worker worker : this.awsDashboard.getMetrics().keySet()) {
+            System.out.printf("Looking at worker with id %s\n", worker.getId());
+
+            System.out.printf("Getting CPU usage for worker %s\n", worker.getId());
+            double cpuUsage = awsInterface.getCpuUsage(worker);
 
             // get metrics from workers
-            List<WorkerMetric> metric = this.getMetric(instance);
+            System.out.printf("Getting metrics for worker %s\n", worker.getId());
+            List<WorkerMetric> metric = this.getMetric(worker);
 
             // print metrics
             for (WorkerMetric m : metric) {
                 System.out.println(m);
             }
             
-            // update the metrics or add if not present
-            //this.awsDashboard.getMetrics().put(instance, Optional.of(new InstanceMetrics(metric, instance.getInstanceId(), cpuUsage)));
+            // update the metrics
+            System.out.printf("Saving metrics for worker %s\n", worker.getId());
+            this.awsDashboard.getMetrics().put(worker, Optional.of(new InstanceMetrics(metric, worker.getId(), cpuUsage)));
         }
     }
 
-    public List<WorkerMetric> getMetric(Instance instance) throws IOException, ClassNotFoundException {
+    public List<WorkerMetric> getMetric(Worker worker) throws IOException, ClassNotFoundException {
 
-        URL url = new URL("http://" + instance.getPublicDnsName() + ":" + PORT + "/stats");
+        URL url = new URL("http://" + worker.getIP() + ":" + worker.getPort() + "/stats");
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
 

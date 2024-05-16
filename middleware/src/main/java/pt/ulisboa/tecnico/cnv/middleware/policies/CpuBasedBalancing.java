@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.cnv.middleware.policies;
 
 import com.amazonaws.services.ec2.model.Instance;
 import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
+import pt.ulisboa.tecnico.cnv.middleware.Worker;
 
 import java.util.*;
 
@@ -10,15 +11,21 @@ import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 public class CpuBasedBalancing implements LBPolicy{
 
     // Class used to decided to which instance the request should be forwarded
-    public Optional<Instance> choose(Map<Instance, Optional<InstanceMetrics>> metrics) {
-        Optional<Pair<String, Double>> minCpuWorker = metrics.entrySet().stream()
-                .filter(entry -> entry.getValue().isPresent())
-                .map(entry -> new Pair<>(entry.getKey().getInstanceId(), entry.getValue().get().getCpuUsage()))
-                .min(Comparator.comparingDouble(Pair::getValue));
+    public Optional<Worker> choose(Map<Worker, Optional<InstanceMetrics>> metrics) {
+        System.out.printf("Trying to choose a worker (there are %d options)\n", metrics.size());
 
-        return metrics.entrySet().stream()
-                    .filter(entry -> entry.getKey().getInstanceId().equals(minCpuWorker.get().getKey()))
-                    .map(Map.Entry::getKey)
-                    .findFirst();
+        Optional<Worker> worker = metrics.entrySet().stream()
+                .map(entry -> {
+                    // If not metric was yet collected, low cpu usage is assumed
+                    double cpuUsage = entry.getValue().isPresent() ?
+                        entry.getValue().get().getCpuUsage() :
+                        0;
+                    return new Pair<>(entry.getKey(), cpuUsage);
+                })
+                .min(Comparator.comparingDouble(Pair::getValue))
+                .map(Pair::getKey);
+
+        System.out.println("Done chosing the worker");
+        return worker;
     }
 }

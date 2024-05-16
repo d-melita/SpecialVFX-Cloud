@@ -3,6 +3,8 @@ package pt.ulisboa.tecnico.cnv.middleware;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
@@ -33,98 +35,79 @@ public class LoadBalancer implements HttpHandler, Runnable {
     }
 
     @Override
-    public void handle(HttpExchange exchange) throws IOException {
-        // FIXME: proper forwarding
-        Optional<Instance> optInstance = this.policy.choose(this.awsDashboard.getMetrics());
+    public void handle(HttpExchange exchange) {
+        System.out.println("Load balancer just got a new request");
+        Optional<Worker> optWorker = this.policy.choose(this.awsDashboard.getMetrics());
 
-        if (!optInstance.isPresent()) {
-            exchange.sendResponseHeaders(500, 0);
-            exchange.close();
-            System.out.println("No instances available");
-            return;
+        try {
+            if (!optWorker.isPresent()) {
+                exchange.sendResponseHeaders(500, 0);
+                exchange.close();
+                System.out.println("No instances available");
+                return;
+            }
+            System.out.println("Worker selected, forwarding the request");
+            forwardTo(optWorker.get(), exchange);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-
-        forwardTo(optInstance.get(), exchange);
     }
 
-    private void forwardTo(Instance instance, HttpExchange exchange) throws IOException {
-        Request request = new Request(exchange.getRequestURI().toString());
+    private void forwardTo(Worker worker, HttpExchange exchange) throws IOException {
+        System.out.printf("Forwarding request to worker %s\n", worker.getId());
+        System.out.printf("The method is %s\n", exchange.getRequestMethod());
 
-        // send request to instance
-        HttpURLConnection con = sendRequestToWorker(instance, request, exchange);
+        String uri = exchange.getRequestURI().toString();
 
-        // reply to client
-        replyToClient(exchange, con);
-    }
+        URL url = new URL("http://" + worker.getIP() + ":" + worker.getPort() + uri);
+        System.out.printf("Opening the connection to worker - the URL is %s\n", url.toString());
+        HttpURLConnection forwardCon = (HttpURLConnection) url.openConnection();
 
-    private HttpURLConnection sendRequestToWorker(Instance instance, Request request, HttpExchange exchange) throws IOException {
-        URL url = new URL("http://" + instance.getPublicDnsName() + ":" + WORKER_PORT + request.getURI());
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod(exchange.getRequestMethod());
+        forwardCon.setRequestMethod(exchange.getRequestMethod());
 
-        // Copy request headers from the original request
+        // copy request headers from the original request
         for (String headerName : exchange.getRequestHeaders().keySet()) {
             if (headerName != null) {
-                con.setRequestProperty(headerName, exchange.getRequestHeaders().get(headerName).get(0));
+                forwardCon.setRequestProperty(headerName, exchange.getRequestHeaders().get(headerName).get(0));
             }
         }
 
-        // copy exchange body to con
+        // copy exchange body to forwarded connection
         if (exchange.getRequestBody() != null) {
-            con.setDoOutput(true);
-            con.getOutputStream().write(exchange.getRequestBody().readAllBytes());
+            forwardCon.setDoOutput(true);
+            forwardCon.getOutputStream().write(exchange.getRequestBody().readAllBytes());
+            forwardCon.getOutputStream().close();
         }
 
-        return con;
-    }
+        System.out.println("Waiting for worker to do its thing");
 
-    private void replyToClient(HttpExchange exchange, HttpURLConnection con) throws IOException {
+        // get the response from worker
+        InputStream responseStream = forwardCon.getInputStream();
 
+        // copy response code
+        exchange.sendResponseHeaders(forwardCon.getResponseCode(), 0);
 
-        /*
-        // Copy response headers from the instance
-        for (String headerName : con.getHeaderFields().keySet()) {
-            if (headerName != null) {
-                response.setHeader(headerName, connection.getHeaderField(headerName));
-            }
+        // get the output stream to write the response back to the original client
+        OutputStream outputStream = exchange.getResponseBody();
+
+        // relay the response back to the original client
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = responseStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
         }
 
-        // Copy response body from the instance
-        try (InputStream input = connection.getInputStream(); OutputStream output = response.getOutputStream()) {
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = input.read(buffer)) != -1) {
-                output.write(buffer, 0, bytesRead);
-            }
-        }
-        */
+        System.out.println("Got response from worker");
 
-
-
-
-
-        // if status code is 200, get response and send it to client
-        if (con.getResponseCode() == HttpURLConnection.HTTP_OK) {
-            BufferedReader rd = new BufferedReader(new InputStreamReader(con.getInputStream()));
-            StringBuffer response = new StringBuffer();
-            String line;
-            while ((line = rd.readLine()) != null) {
-                response.append(line);
-            }
-            rd.close();
-
-            exchange.sendResponseHeaders(200, response.length());
-            exchange.getResponseBody().write(response.toString().getBytes());
-        } else {  // if status code is not 200, send error 500 to client
-            exchange.sendResponseHeaders(500, 0);
-        }
-        exchange.close();
+        outputStream.close();
+        responseStream.close();
+        forwardCon.disconnect();
     }
 
     public void run() {
-        // TODO - Check if correct
         HttpServer server = null;
         try {
+            // Load balancer runs in the same port as workers
             server = HttpServer.create(new InetSocketAddress(WORKER_PORT), 0);
         } catch (IOException e) {
             throw new RuntimeException(e);

@@ -29,5 +29,9 @@ public class WebServer {
 
         InstanceMonitor instanceMonitor = new InstanceMonitor(awsDashboard, new DummyAWS());
         instanceMonitor.start();
+        System.out.println("Instance monitor started");
+
+        // FIXME: hack !
+        Thread.sleep(10000);
     }
 }

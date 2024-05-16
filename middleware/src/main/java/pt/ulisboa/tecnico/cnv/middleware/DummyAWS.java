@@ -6,18 +6,25 @@ import java.util.Random;
 import java.util.Stack;
 
 public class DummyAWS implements AWSInterface {
+    private Stack<DummyWorker> workers;
     private Stack<Process> processes;
 
     public DummyAWS() {
         this.processes = new Stack<>();
+        this.workers = new Stack<>();
     }
 
-    public double getCpuUsage(Instance instance) {
-        return new Random().nextDouble();
+    public double getCpuUsage(Worker worker) {
+        if (worker instanceof DummyWorker) {
+            return new Random().nextDouble();
+        }
+
+        throw new RuntimeException("DummyAWS can only be used with dummy workers");
     }
 
-    public void createInstance() {
-        int port = 9000 + this.processes.size();
+    public Worker createInstance() {
+        int id = this.processes.size();
+        int port = 9000 + id;
         System.out.printf("Launching instance on %d\n", port);
         ProcessBuilder processBuilder = new ProcessBuilder("launchInstance.sh", String.valueOf(port));
         try {
@@ -26,13 +33,19 @@ public class DummyAWS implements AWSInterface {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        System.out.printf("Done creating instance\n");
+        DummyWorker worker = new DummyWorker(port, String.valueOf(id));
+        workers.push(worker);
+        return worker;
     }
 
-    public void forceTerminateInstance() {
+    public Worker forceTerminateInstance() {
         if (processes.size() == 0) {
             throw new RuntimeException("No instances to terminate");
         }
 
         processes.pop().destroy();
+        return workers.pop();
     }
 }

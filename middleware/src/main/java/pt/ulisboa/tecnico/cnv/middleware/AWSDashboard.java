@@ -12,7 +12,7 @@ public class AWSDashboard{
     private AmazonCloudWatch cloudWatch;
 
     // Map of instances that are currently running and their metrics
-    private Map<Instance, Optional<InstanceMetrics>> metrics = new ConcurrentHashMap();
+    private Map<Worker, Optional<InstanceMetrics>> metrics = new ConcurrentHashMap();
 
     // Time to wait until the instance is terminated (in milliseconds).
     private static long WAIT_TIME = 1000 * 60 * 10;
@@ -25,19 +25,19 @@ public class AWSDashboard{
     public AWSDashboard(){
     }
 
-    public Map<Instance, Optional<InstanceMetrics>> getMetrics(){
+    public Map<Worker, Optional<InstanceMetrics>> getMetrics(){
         return this.metrics.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
     }
     
-    public void registerInstance(Instance instance){
-        this.metrics.put(instance, Optional.empty());
+    public void registerInstance(Worker worker){
+        this.metrics.put(worker, Optional.empty());
     }
 
-    public void registerInstance(Instance instance, InstanceMetrics metrics){
-        this.metrics.put(instance, Optional.of(metrics));
+    public void updateMetrics(Worker worker, InstanceMetrics metrics){
+        this.metrics.put(worker, Optional.of(metrics));
     }
 
-    public void unregisterInstance(Instance instance){
-        this.metrics.remove(instance);
+    public void unregisterInstance(Worker worker){
+        this.metrics.remove(worker);
     }
 }

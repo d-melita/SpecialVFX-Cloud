@@ -62,7 +62,7 @@ public class ProductionAWS implements AWSInterface {
         this.createInstance();
     }
 
-    public void createInstance() {
+    public Worker createInstance() {
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest()
                 .withImageId(AWS_AMI_ID)
                 .withInstanceType("t2.micro")
@@ -104,23 +104,21 @@ public class ProductionAWS implements AWSInterface {
             }
         }
 
-        this.awsDashboard.registerInstance(instance);
+        return new ProductionWorker(instance);
     }
 
     // terminate instance
-    public void forceTerminateInstance() {
+    public Worker forceTerminateInstance() {
         // get the instance to terminate
-        Optional<Instance> optInstance = this.awsDashboard.getMetrics().keySet().stream().findFirst();
+        Optional<Worker> optWorker = this.awsDashboard.getMetrics().keySet().stream().findFirst();
 
-        if (optInstance.isEmpty()) {
-            throw new RuntimeException("No instances to terminate.");
+        if (optWorker.isEmpty()) {
+            throw new RuntimeException("No worker to terminate.");
         }
 
-        Instance instance = optInstance.get();
-
-        if (instance == null || this.awsDashboard.getMetrics().keySet().size() == 1) {
-            throw new RuntimeException("No instances to terminate.");
-        }
+        Worker abstractWorker = optWorker.get();
+        ProductionWorker worker = (ProductionWorker) abstractWorker;
+        Instance instance = worker.getInstance();
 
         // terminate the instance
         TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
@@ -130,10 +128,17 @@ public class ProductionAWS implements AWSInterface {
         if (result.getTerminatingInstances().size() != 1) {
             throw new RuntimeException("Failed to terminate instance.");
         }
-        this.awsDashboard.unregisterInstance(instance);
+        return worker;
     }
 
-    public double getCpuUsage(Instance instance) {
+    public double getCpuUsage(Worker abstractWorker) {
+        if (abstractWorker instanceof DummyWorker) {
+            throw new RuntimeException("Production AWS can only be used with production workers");
+        }
+
+        ProductionWorker worker = (ProductionWorker) abstractWorker;
+        Instance instance = worker.getInstance();
+
         // get cpu usage of an instance
         // get the instance id
         String instanceId = instance.getInstanceId();

@@ -3,12 +3,14 @@ package pt.ulisboa.tecnico.cnv.middleware.policies;
 import com.amazonaws.services.ec2.model.Instance;
 
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
+import pt.ulisboa.tecnico.cnv.middleware.Worker;
 import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalDouble;
 
 /**
  * Auto-scaling policy that changes replicas only based comparison of CPU
@@ -23,24 +25,24 @@ public class CpuBasedScaling implements ASPolicy {
         this.highThreshold = highThreshold;
     }
 
-    public ScalingDecision evaluate(Map<Instance, Optional<InstanceMetrics>> metrics, int instances) {
-        List<Pair<String, Double>> cpuUsage = new ArrayList<>();
-        for (Instance instance : metrics.keySet()) {
-            Optional<InstanceMetrics> optMetrics = metrics.get(instance);
-            if (!optMetrics.isPresent()) {
-                continue;
+    public ScalingDecision evaluate(Map<Worker, Optional<InstanceMetrics>> metrics, int instances) {
+        OptionalDouble averageOpt = metrics.entrySet().stream()
+            .map(p -> p.getValue())
+            .filter(p -> p.isPresent())
+            .mapToDouble(m -> m.get().getCpuUsage())
+            .average();
+
+        if (averageOpt.isPresent()) {
+            double average = averageOpt.getAsDouble();
+            if (average > this.highThreshold) {
+                return ScalingDecision.Reduce;
             }
-            cpuUsage.add(new Pair<>(instance.getInstanceId(), optMetrics.get().getCpuUsage()));
+
+            if (average < lowThreshold && instances > 1) {
+                return ScalingDecision.Increase;
+            }
         }
 
-        double average = cpuUsage.stream().mapToDouble(Pair::getValue).average().orElse(0.0);
-
-        if (average > this.highThreshold) {
-            return ScalingDecision.Reduce;
-        } if (average < lowThreshold && instances > 1) {
-            return ScalingDecision.Increase;
-        } else {
-            return ScalingDecision.DontChange;
-        }
+        return ScalingDecision.DontChange;
     }
 }
