@@ -1,5 +1,7 @@
 package pt.ulisboa.tecnico.cnv.middleware;
 
+import java.util.Objects;
+
 public class DummyWorker extends Worker {
   private int port;
   private String id;
@@ -19,5 +21,25 @@ public class DummyWorker extends Worker {
 
   public String getId() {
     return this.id;
+  }
+
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(port, id);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+
+    DummyWorker that = (DummyWorker) obj;
+    return port == that.port && id.equals(that.id);
   }
 }

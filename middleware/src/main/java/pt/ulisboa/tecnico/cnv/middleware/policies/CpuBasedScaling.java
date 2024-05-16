@@ -32,15 +32,24 @@ public class CpuBasedScaling implements ASPolicy {
             .mapToDouble(m -> m.get().getCpuUsage())
             .average();
 
+        System.out.printf("there are %d non empty\n", 
+                metrics.entrySet().stream()
+                    .map(p -> p.getValue())
+                    .filter(p -> p.isPresent())
+                    .count());
+
         if (averageOpt.isPresent()) {
             double average = averageOpt.getAsDouble();
+            System.out.printf("Average for CPU usage is %f\n", average);
             if (average > this.highThreshold) {
-                return ScalingDecision.Reduce;
+                return ScalingDecision.Increase;
             }
 
             if (average < lowThreshold && instances > 1) {
-                return ScalingDecision.Increase;
+                return ScalingDecision.Reduce;
             }
+        } else {
+            System.out.println("No average was found for CPU usage");
         }
 
         return ScalingDecision.DontChange;

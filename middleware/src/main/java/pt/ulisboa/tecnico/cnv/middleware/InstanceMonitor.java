@@ -55,6 +55,7 @@ public class InstanceMonitor implements Runnable {
 
             System.out.printf("Getting CPU usage for worker %s\n", worker.getId());
             double cpuUsage = awsInterface.getCpuUsage(worker);
+            System.out.printf("CPU usage for worker %s is %f\n", worker.getId(), cpuUsage);
 
             // get metrics from workers
             System.out.printf("Getting metrics for worker %s\n", worker.getId());
@@ -67,7 +68,13 @@ public class InstanceMonitor implements Runnable {
             
             // update the metrics
             System.out.printf("Saving metrics for worker %s\n", worker.getId());
-            this.awsDashboard.getMetrics().put(worker, Optional.of(new InstanceMetrics(metric, worker.getId(), cpuUsage)));
+            this.awsDashboard.updateMetrics(worker, new InstanceMetrics(metric, worker.getId(), cpuUsage));
+
+            System.out.printf("At monitor: there are %d non empty\n", 
+                this.awsDashboard.getMetrics().entrySet().stream()
+                    .map(p -> p.getValue())
+                    .filter(p -> p.isPresent())
+                    .count());
         }
     }
 
@@ -101,7 +108,7 @@ public class InstanceMonitor implements Runnable {
             try {
                 this.update();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }

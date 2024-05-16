@@ -16,7 +16,7 @@ public class DummyAWS implements AWSInterface {
 
     public double getCpuUsage(Worker worker) {
         if (worker instanceof DummyWorker) {
-            return new Random().nextDouble();
+            return new Random().nextDouble() * 100;
         }
 
         throw new RuntimeException("DummyAWS can only be used with dummy workers");
