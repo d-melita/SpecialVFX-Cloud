@@ -58,7 +58,7 @@ public class LoadBalancer implements HttpHandler, Runnable {
     }
 
     private HttpURLConnection sendRequestToWorker(Instance instance, Request request, HttpExchange exchange) throws IOException {
-        URL url = new URL("http://" + instance.getPublicDnsName() + ":" + PORT + request.getURI());
+        URL url = new URL("http://" + instance.getPublicDnsName() + ":" + WORKER_PORT + request.getURI());
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod(exchange.getRequestMethod());
 
@@ -125,7 +125,7 @@ public class LoadBalancer implements HttpHandler, Runnable {
         // TODO - Check if correct
         HttpServer server = null;
         try {
-            server = HttpServer.create(new InetSocketAddress(PORT), 0);
+            server = HttpServer.create(new InetSocketAddress(WORKER_PORT), 0);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
