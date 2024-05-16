@@ -15,10 +15,9 @@ import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
+import com. amazonaws. services. ec2.model. TerminateInstancesResult;
 import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
 import pt.ulisboa.tecnico.cnv.middleware.policies.ASPolicy;
-import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
-import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 
 public class AutoScaler {
 
@@ -37,8 +36,8 @@ public class AutoScaler {
     private ASPolicy policy;
     private AmazonEC2 ec2;
 
-    AWSDashboard awsDashboard;
-    Thread daemon;
+    private AWSDashboard awsDashboard;
+    private Thread daemon;
 
     private static final int TIMER = 10000; // 10 seconds
 
@@ -75,9 +74,7 @@ public class AutoScaler {
                 this.createInstance();
                 break;
             case Reduce:
-                this.terminateInstance();
-                break;
-            case DontChange:
+                this.forceTerminateInstance();
                 break;
             default:
                 break;
@@ -131,10 +128,8 @@ public class AutoScaler {
     }
 
     // terminate instance
-    // FIXME: change the name to forceTerminateInstance
-    public void terminateInstance() {
+    public void forceTerminateInstance() {
         // get the instance to terminate
-        // FIXME: this might not work
         Optional<Instance> optInstance = this.awsDashboard.getMetrics().keySet().stream().findFirst();
 
         if (optInstance.isEmpty()) {
@@ -143,22 +138,25 @@ public class AutoScaler {
 
         Instance instance = optInstance.get();
 
-        // FIXME: we shouldn't terminate when there's only one running
-        if (instance == null) {
+        if (instance == null || this.awsDashboard.getMetrics().keySet().size() == 1) {
             throw new RuntimeException("No instances to terminate.");
         }
 
         // terminate the instance
         TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
         termInstanceReq.withInstanceIds(instance.getInstanceId());
-        this.ec2.terminateInstances(termInstanceReq);
-        // TODO: check result
+        TerminateInstancesResult result = this.ec2.terminateInstances(termInstanceReq);
+        // TODO: check if correct
+        if (result.getTerminatingInstances().size() != 1) {
+            throw new RuntimeException("Failed to terminate instance.");
+        }
         this.awsDashboard.unregisterInstance(instance);
     }
 
+    // FIXME
     public void start() {
         daemon = new Thread(String.valueOf(this)); // TODO - Check this
-        daemon.start();
+        daemon.run();
     }
 
     public void waitFor() {

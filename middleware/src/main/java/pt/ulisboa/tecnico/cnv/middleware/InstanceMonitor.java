@@ -14,8 +14,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.ProtocolException;
 import java.net.URL;
+import java.util.List;
+import java.util.Optional;
 
 public class InstanceMonitor {
 
@@ -42,19 +43,19 @@ public class InstanceMonitor {
 
         this.awsDashboard = awsDashboard;
     }
-    private void update() {
+    private void update() throws IOException {
         for(Instance instance : this.awsDashboard.getMetrics().keySet()) {
             double cpuUsage = this.getCpuUsage(instance);
             // get metrics from workers
-            //WorkerMetric metric = this.getMetric(instance);
+            List<WorkerMetric> metric = this.getMetric(instance);
             
             // update the metrics or add if not present
-            //this.awsDashboard.getMetrics().put(instance, new InstanceMetrics(metric, cpuUsage));
+            this.awsDashboard.getMetrics().put(instance, Optional.of(new InstanceMetrics(metric, instance.getInstanceId(), cpuUsage)));
             // TODO - check if metrics actually have smth
         }
     }
 
-    public void getMetric(Instance instance) throws IOException {
+    public List<WorkerMetric> getMetric(Instance instance) throws IOException {
         // TODO - FIXME
 
         URL url = new URL("http://" + instance.getPublicDnsName() + ":8000/stats");
@@ -71,7 +72,8 @@ public class InstanceMonitor {
         in.close();
         con.disconnect();
 
-        // TODO - Finish - return WorkerMetric - change on signature
+        // TODO - Finish - return WorkerMetric
+        return null;
     }
 
     /**
@@ -101,18 +103,18 @@ public class InstanceMonitor {
         return cpuUsage;
     }
 
-    public void start() {
+    public void start() throws IOException {
         this.daemon = new Thread(this.toString());
+        this.run();
     }  // TODO - check
 
-    public void run() {
+    public void run() throws IOException {
         while (true) {
             try {
                 Thread.sleep(QUERY_COOLDOWN);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-
             this.update();
         }
     }

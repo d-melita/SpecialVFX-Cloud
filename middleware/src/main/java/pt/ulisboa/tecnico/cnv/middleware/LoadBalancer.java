@@ -13,6 +13,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
+import pt.ulisboa.tecnico.cnv.middleware.policies.LBPolicy;
 
 public class LoadBalancer implements HttpHandler {
 
@@ -22,24 +23,15 @@ public class LoadBalancer implements HttpHandler {
 
     private static final int TIMER = 10000;
 
-    //private LBPolicy policy;
+    private LBPolicy policy;
 
-    public LoadBalancer(AWSDashboard awsDashboard) {
+    public LoadBalancer(AWSDashboard awsDashboard, LBPolicy policy) {
         this.awsDashboard = awsDashboard;
+        this.policy = policy;
     }
     private Optional<Instance> getLeastLoadedInstance() {
-        List<Pair<Instance, Double>> instances = new ArrayList<>();
-        for (Instance instance : this.awsDashboard.getMetrics().keySet()) {
-            double cpuUsage = this.awsDashboard.getMetrics().get(instance).get().getCpuUsage();
-            instances.add(new Pair<>(instance, cpuUsage));
-        }
-
-        // get instance with the least cpu usage
-        Optional<Pair<Instance, Double>> optInstance = instances.stream().min(Comparator.comparing(Pair::getValue));
-        if (!optInstance.isPresent()) {
-            return Optional.empty();
-        }
-        return Optional.of(optInstance.get().getKey());
+        Instance instance = this.policy.evaluate(this.awsDashboard.getMetrics());
+        return Optional.ofNullable(instance);  // return null if no instance is available
     }
 
     @Override
@@ -97,7 +89,7 @@ public class LoadBalancer implements HttpHandler {
         // TODO - Check if correct
         HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
-        server.createContext("/", new LoadBalancer(this.awsDashboard));
+        server.createContext("/", this);
         server.start();
     }
 }
