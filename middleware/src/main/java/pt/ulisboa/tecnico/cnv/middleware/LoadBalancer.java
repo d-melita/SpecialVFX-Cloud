@@ -19,9 +19,9 @@ public class LoadBalancer implements HttpHandler {
 
     private AWSDashboard awsDashboard;
 
-    private Map<String, List<Request>> requests = new HashMap<>();
-
     private static final int TIMER = 10000;
+
+    private static final int PORT = 8000;
 
     private LBPolicy policy;
 
@@ -29,28 +29,24 @@ public class LoadBalancer implements HttpHandler {
         this.awsDashboard = awsDashboard;
         this.policy = policy;
     }
-    private Optional<Instance> getLeastLoadedInstance() {
-        Instance instance = this.policy.evaluate(this.awsDashboard.getMetrics());
-        return Optional.ofNullable(instance);  // return null if no instance is available
-    }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         // FIXME: proper forwarding
-        Optional<Instance> optInstance = getLeastLoadedInstance();
+        Optional<Instance> optInstance = this.policy.choose(this.awsDashboard.getMetrics());
 
         if (!optInstance.isPresent()) {
             exchange.sendResponseHeaders(500, 0);
             exchange.close();
+            System.out.println("No instances available");
             return;
         }
 
-        Instance instance = optInstance.get();
-        Request request = new Request(exchange.getRequestURI().toString());
+        forwardTo(optInstance.get(), exchange);
+    }
 
-        // add request to requests list
-        this.requests.putIfAbsent(instance.getInstanceId(), new ArrayList<Request>());
-        this.requests.get(instance.getInstanceId()).add(request);
+    private void forwardTo(Instance instance, HttpExchange exchange) throws IOException {
+        Request request = new Request(exchange.getRequestURI().toString());
 
         // send request to instance
         HttpURLConnection con = sendRequestToWorker(instance, request, exchange);
@@ -60,13 +56,51 @@ public class LoadBalancer implements HttpHandler {
     }
 
     private HttpURLConnection sendRequestToWorker(Instance instance, Request request, HttpExchange exchange) throws IOException {
-        URL url = new URL("http://" + instance.getPublicDnsName() + ":8000" + request.getURI());
+        URL url = new URL("http://" + instance.getPublicDnsName() + ":" + PORT + request.getURI());
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod(exchange.getRequestMethod());
+
+        // Copy request headers from the original request
+        for (String headerName : exchange.getRequestHeaders().keySet()) {
+            if (headerName != null) {
+                con.setRequestProperty(headerName, exchange.getRequestHeaders().get(headerName).get(0));
+            }
+        }
+
+        // copy exchange body to con
+        if (exchange.getRequestBody() != null) {
+            con.setDoOutput(true);
+            con.getOutputStream().write(exchange.getRequestBody().readAllBytes());
+        }
+
         return con;
     }
 
     private void replyToClient(HttpExchange exchange, HttpURLConnection con) throws IOException {
+
+
+
+        // Copy response headers from the instance
+        for (String headerName : con.getHeaderFields().keySet()) {
+            if (headerName != null) {
+                response.setHeader(headerName, connection.getHeaderField(headerName));
+            }
+        }
+
+        // Copy response body from the instance
+        try (InputStream input = connection.getInputStream(); OutputStream output = response.getOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = input.read(buffer)) != -1) {
+                output.write(buffer, 0, bytesRead);
+            }
+        }
+
+
+
+
+
+
         // if status code is 200, get response and send it to client
         if (con.getResponseCode() == HttpURLConnection.HTTP_OK) {
             BufferedReader rd = new BufferedReader(new InputStreamReader(con.getInputStream()));

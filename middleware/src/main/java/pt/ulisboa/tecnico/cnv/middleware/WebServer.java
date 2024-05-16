@@ -7,7 +7,7 @@ import java.net.InetSocketAddress;
 import com.sun.net.httpserver.HttpServer;
 import pt.ulisboa.tecnico.cnv.middleware.policies.ASPolicy;
 import pt.ulisboa.tecnico.cnv.middleware.policies.CpuBasedScaling;
-import pt.ulisboa.tecnico.cnv.middleware.policies.MetricsBasedBalancing;
+import pt.ulisboa.tecnico.cnv.middleware.policies.CpuBasedBalancing;
 
 
 public class WebServer {
@@ -22,7 +22,7 @@ public class WebServer {
         System.out.println("AutoScaler started...");
 
         // Load Balancer
-        LoadBalancer loadBalancer = new LoadBalancer(awsDashboard, new MetricsBasedBalancing());
+        LoadBalancer loadBalancer = new LoadBalancer(awsDashboard, new CpuBasedBalancing());
         loadBalancer.start();
         System.out.println("LoadBalancer started on port 8000...");
 

@@ -10,5 +10,5 @@ import java.util.Optional;
  * load-balancing policy
  */
 public interface LBPolicy {
-    public Instance evaluate(Map<Instance, Optional<InstanceMetrics>> metrics);
+    public Optional<Instance> choose(Map<Instance, Optional<InstanceMetrics>> metrics);
 }
