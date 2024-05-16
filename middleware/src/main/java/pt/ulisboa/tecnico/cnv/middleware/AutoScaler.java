@@ -52,7 +52,7 @@ public class AutoScaler {
             .withRegion(AWS_REGION)
             .build();
 
-        this.createInstance();
+        awsInterface.createInstance();
     }
 
     public void run() {
@@ -73,86 +73,15 @@ public class AutoScaler {
         switch (policy.evaluate(metrics, this.awsDashboard.getMetrics().keySet().size())) {
             // TODO: fill this in
             case Increase:
-                this.createInstance();
+                awsInterface.createInstance();
                 break;
             case Reduce:
-                this.forceTerminateInstance();
+                awsInterface.forceTerminateInstance();
                 break;
             default:
                 break;
         }
 
-    }
-
-    public void createInstance() {
-        RunInstancesRequest runInstancesRequest = new RunInstancesRequest()
-            .withImageId(AWS_AMI_ID)
-            .withInstanceType("t2.micro")
-            .withMinCount(1)
-            .withMaxCount(1)
-            .withKeyName(AWS_KEYPAIR_NAME)
-            .withSecurityGroups(AWS_SECURITY_GROUP);
-
-        RunInstancesResult runInstancesResult = this.ec2.runInstances(runInstancesRequest);
-        String reservationId = runInstancesResult.getReservation().getReservationId();
-
-        List<Instance> newInstances = runInstancesResult.getReservation().getInstances();
-
-        if (newInstances.size() != 1) {
-            throw new RuntimeException("Failed to create instances.");
-        }
-
-        Instance instance = newInstances.get(0);
-
-        // wait until the instances are running
-        DescribeInstancesRequest describeRequest = new DescribeInstancesRequest()
-                            .withFilters(new Filter()
-                                    .withName("reservation-id")
-                                    .withValues(reservationId));
-
-        Reservation reservation;
-        while (!instance.getState().getName().equals("running")) {
-            reservation = ec2.describeInstances(describeRequest).getReservations().get(0);
-
-            instance = reservation.getInstances().get(0);
-            System.out.printf("The current state is %s\n", instance.getState().getName());
-
-            System.out.printf("Waiting for instance to spawn for %d seconds\n",
-                    QUERY_COOLDOWN / 1000);
-            try {
-                Thread.sleep(QUERY_COOLDOWN);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
-        this.awsDashboard.registerInstance(instance);
-    }
-
-    // terminate instance
-    public void forceTerminateInstance() {
-        // get the instance to terminate
-        Optional<Instance> optInstance = this.awsDashboard.getMetrics().keySet().stream().findFirst();
-
-        if (optInstance.isEmpty()) {
-            throw new RuntimeException("No instances to terminate.");
-        }
-
-        Instance instance = optInstance.get();
-
-        if (instance == null || this.awsDashboard.getMetrics().keySet().size() == 1) {
-            throw new RuntimeException("No instances to terminate.");
-        }
-
-        // terminate the instance
-        TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
-        termInstanceReq.withInstanceIds(instance.getInstanceId());
-        TerminateInstancesResult result = this.ec2.terminateInstances(termInstanceReq);
-        // TODO: check if correct
-        if (result.getTerminatingInstances().size() != 1) {
-            throw new RuntimeException("Failed to terminate instance.");
-        }
-        this.awsDashboard.unregisterInstance(instance);
     }
 
     // FIXME

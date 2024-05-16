@@ -102,7 +102,19 @@ public class WebServer {
     }
 
     public static void main(String[] args) throws Exception {
-        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        int port;
+        if (args.length == 1) {
+            try {
+                port = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid port number. Please provide a valid integer.");
+                return;
+            }
+        } else {
+            port = 8000;
+        }
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.createContext("/", new WrapperHandler(new RootHandler()));
         server.createContext("/stats", new StatsHandler(statsServiceQueue));

@@ -42,17 +42,14 @@ public class InstanceMonitor implements Runnable {
     private Thread daemon;
 
     public InstanceMonitor(AWSDashboard awsDashboard, AWSInterface awsInterface){
-        this.cloudWatch = AmazonCloudWatchClientBuilder.standard()
-            .withCredentials(new EnvironmentVariableCredentialsProvider())
-            .withRegion(AWS_REGION)
-            .build();
-
         this.awsDashboard = awsDashboard;
         this.awsInterface = awsInterface;
     }
+
     private void update() throws IOException, ClassNotFoundException {
         for(Instance instance : this.awsDashboard.getMetrics().keySet()) {
-            //double cpuUsage = this.getCpuUsage(instance);
+            double cpuUsage = awsInterface.getCpuUsage(instance);
+
             // get metrics from workers
             List<WorkerMetric> metric = this.getMetric(instance);
 
@@ -79,33 +76,6 @@ public class InstanceMonitor implements Runnable {
         in.close();
         con.disconnect();
         return metrics;
-    }
-
-    /**
-     * Get CPU usage of a single instance
-     */
-    public double getCpuUsage(Instance instance) {
-        // get cpu usage of an instance
-        // get the instance id
-        String instanceId = instance.getInstanceId();
-
-        // get the instance type
-        String instanceType = instance.getInstanceType();
-
-        // get the metric
-        GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
-            .withNamespace("AWS/EC2")
-            .withMetricName("CPUUtilization")
-            .withDimensions(new Dimension().withName("InstanceId").withValue(instanceId))
-            .withPeriod(60)
-            .withStartTime(new Date(new Date().getTime() - OBS_TIME))
-            .withEndTime(new Date())
-            .withStatistics("Average");
-
-        double cpuUsage = this.cloudWatch.getMetricStatistics(request).getDatapoints().stream()
-            .mapToDouble(Datapoint::getAverage).average().orElse(0.0);
-
-        return cpuUsage;
     }
 
     public void start() {
