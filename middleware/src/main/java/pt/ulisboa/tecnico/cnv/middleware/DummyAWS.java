@@ -17,7 +17,7 @@ public class DummyAWS implements AWSInterface {
     }
 
     public void createInstance() {
-        int port = 8000 + this.processes.size();
+        int port = 9000 + this.processes.size();
         System.out.printf("Launching instance on %d\n", port);
         ProcessBuilder processBuilder = new ProcessBuilder("launchInstance.sh", String.valueOf(port));
         try {

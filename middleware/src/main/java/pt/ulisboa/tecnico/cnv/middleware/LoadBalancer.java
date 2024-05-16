@@ -21,7 +21,7 @@ public class LoadBalancer implements HttpHandler, Runnable {
 
     private static final int TIMER = 10000;
 
-    private static final int PORT = 8000;
+    public static final int WORKER_PORT = 8000;
 
     private LBPolicy policy;
 

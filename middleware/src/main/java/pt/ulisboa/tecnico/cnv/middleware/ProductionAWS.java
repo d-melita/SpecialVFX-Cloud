@@ -34,8 +34,6 @@ public class ProductionAWS implements AWSInterface {
     private static final String AWS_SECURITY_GROUP = System.getenv("AWS_SECURITY_GROUP");
     private static final String AWS_AMI_ID = System.getenv("AWS_AMI_ID");
 
-    // Time to wait until the instance is terminated (in milliseconds).
-    private static long WAIT_TIME = 1000 * 60 * 10;
     // Total observation time in milliseconds.
     private static long OBS_TIME = 1000 * 60 * 20;
     // Time between each query for instance state
@@ -46,9 +44,6 @@ public class ProductionAWS implements AWSInterface {
     private AmazonCloudWatch cloudWatch;
 
     private AWSDashboard awsDashboard;
-    private Thread daemon;
-
-    private static final int TIMER = 10000; // 10 seconds
 
     public ProductionAWS(AWSDashboard awsDashboard, ASPolicy policy) {
         this.awsDashboard = awsDashboard;

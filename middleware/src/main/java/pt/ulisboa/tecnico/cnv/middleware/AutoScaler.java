@@ -20,21 +20,7 @@ import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
 import pt.ulisboa.tecnico.cnv.middleware.policies.ASPolicy;
 
 public class AutoScaler {
-
-    private static final String AWS_REGION = System.getenv("AWS_REGION");
-    private static final String AWS_KEYPAIR_NAME = System.getenv("AWS_KEYPAIR_NAME");
-    private static final String AWS_SECURITY_GROUP = System.getenv("AWS_SECURITY_GROUP");
-    private static final String AWS_AMI_ID = System.getenv("AWS_AMI_ID");
-
-    // Time to wait until the instance is terminated (in milliseconds).
-    private static long WAIT_TIME = 1000 * 60 * 10;
-    // Total observation time in milliseconds.
-    private static long OBS_TIME = 1000 * 60 * 20;
-    // Time between each query for instance state
-    private static long QUERY_COOLDOWN = 1000 * 10;
-
     private ASPolicy policy;
-    private AmazonEC2 ec2;
 
     private AWSDashboard awsDashboard;
     private Thread daemon;
@@ -46,11 +32,6 @@ public class AutoScaler {
         this.awsDashboard = awsDashboard;
         this.policy = policy;
         this.awsInterface = awsInterface;
-
-        this.ec2 = AmazonEC2ClientBuilder.standard()
-            .withCredentials(new EnvironmentVariableCredentialsProvider())
-            .withRegion(AWS_REGION)
-            .build();
 
         awsInterface.createInstance();
     }

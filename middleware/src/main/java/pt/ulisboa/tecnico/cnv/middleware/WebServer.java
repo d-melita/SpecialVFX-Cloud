@@ -15,28 +15,19 @@ public class WebServer {
     public static void main(String[] args) throws Exception {
 
         AWSInterface awsInterface = new DummyAWS();
+        AWSDashboard awsDashboard = new AWSDashboard();
 
-        awsInterface.createInstance();
-        awsInterface.createInstance();
-        awsInterface.createInstance();
-        Thread.sleep(5);
-        awsInterface.forceTerminateInstance();
-        awsInterface.forceTerminateInstance();
-        awsInterface.forceTerminateInstance();
+        // Auto Scaler
+        AutoScaler autoScaler = new AutoScaler(awsDashboard, new CpuBasedScaling(25, 75), awsInterface);
+        autoScaler.start();
+        System.out.println("AutoScaler started...");
 
-        // AWSDashboard awsDashboard = new AWSDashboard();
+        // Load Balancer
+        LoadBalancer loadBalancer = new LoadBalancer(awsDashboard, new CpuBasedBalancing());
+        loadBalancer.start();
+        System.out.println("LoadBalancer started on port 8000...");
 
-        // // Auto Scaler
-        // AutoScaler autoScaler = new AutoScaler(awsDashboard, new CpuBasedScaling(25, 75), awsInterface);
-        // autoScaler.start();
-        // System.out.println("AutoScaler started...");
-
-        // // Load Balancer
-        // LoadBalancer loadBalancer = new LoadBalancer(awsDashboard, new CpuBasedBalancing());
-        // loadBalancer.start();
-        // System.out.println("LoadBalancer started on port 8000...");
-
-        // InstanceMonitor instanceMonitor = new InstanceMonitor(awsDashboard, new DummyAWS());
-        // instanceMonitor.start();
+        InstanceMonitor instanceMonitor = new InstanceMonitor(awsDashboard, new DummyAWS());
+        instanceMonitor.start();
     }
 }
