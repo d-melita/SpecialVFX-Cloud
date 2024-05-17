@@ -19,19 +19,23 @@ ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat insta
 # copy source code
 pushd ..; mvn clean; popd
 echo "Copying files to virtual machine"
-rsync -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../pom.xml ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
-rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../raytracer ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
-rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../imageproc ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
-rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../javassist ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
-rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../webserver ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
+# rsync -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../pom.xml ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
+rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../../project ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
+# rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../imageproc ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
+# rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../javassist ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
+# rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../webserver ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
+# rsync -r -e "ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH" $DIR/../webserver ec2-user@$(cat instance.dns):$TARGET_DIR || exit 1
 
 # compile and install server
-cmd="cd $TARGET_DIR && mvn clean package"
+cmd="cd $TARGET_DIR/project && MAVEN_OPTS='-Xmx512m' mvn clean package"
 ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat instance.dns) $cmd || exit 1
 
 # setup web server to start on instance launch
-java_cmd="java -cp target/webserver-1.0.0-SNAPSHOT-jar-with-dependencies.jar pt.ulisboa.tecnico.cnv.webserver.WebServer"
+# java_cmd="cd /home/ec2-user/vfx-studio/project/webserver; java -cp target/webserver-1.0.0-SNAPSHOT-jar-with-dependencies.jar pt.ulisboa.tecnico.cnv.webserver.WebServer"
+java_cmd="cd /home/ec2-user/vfx-studio/project/webserver; ./run"
 cmd="echo \"$java_cmd &\" | sudo tee -a /etc/rc.local; sudo chmod +x /etc/rc.local"
 ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat instance.dns) $cmd
 
-# TODO: don't I have to enable the rc-local service ?
+# setup systemd service
+cmd="sudo systemctl enable --now rc-local"
+ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat instance.dns) $cmd

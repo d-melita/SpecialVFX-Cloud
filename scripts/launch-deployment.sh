@@ -1,88 +1,48 @@
-#!/usr/bin/env bash
+#! /usr/bin/env bash
 
 source config.sh
 
-# create load balancer and 
-aws elb create-load-balancer \
-	--load-balancer-name $CNV_LB_NAME \
-	--listeners "Protocol=HTTP,LoadBalancerPort=80,InstanceProtocol=HTTP,InstancePort=8000" \
-	--availability-zones $AWS_DEFAULT_AZ
+echo "Launching Load Balancer and Auto Scaler..."
 
-# configure health check
-aws elb configure-health-check \
-	--load-balancer-name $CNV_LB_NAME \
-	--health-check Target=HTTP:8000/test,Interval=30,UnhealthyThreshold=2,HealthyThreshold=10,Timeout=5 \
-	--region $AWS_DEFAULT_REGION
-
-# create launch configuration
-aws autoscaling create-launch-configuration \
-	--launch-configuration-name $CNV_LAUNCH_CONFIG_NAME \
-	--image-id $(cat image.id) \
+# run new instance
+# TODO: name the instance
+aws ec2 run-instances \
+	--image-id resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 \
 	--instance-type t2.micro \
-	--security-groups $AWS_SECURITY_GROUP \
 	--key-name $AWS_KEYPAIR_NAME \
-	--instance-monitoring Enabled=true \
-	--region $AWS_DEFAULT_REGION
+	--security-group-ids $AWS_SECURITY_GROUP \
+	--monitoring Enabled=true | jq -r ".Instances[0].InstanceId" > monitoring.id || exit 1
 
-# create auto scaling group
-aws autoscaling create-auto-scaling-group \
-	--auto-scaling-group-name $CNV_AS_NAME \
-	--launch-configuration-name $CNV_LAUNCH_CONFIG_NAME \
-	--load-balancer-names $CNV_LB_NAME \
-	--availability-zones $AWS_DEFAULT_AZ \
-	--health-check-type ELB \
-	--health-check-grace-period 60 \
-	--min-size 1 \
-	--max-size 3 \
-	--desired-capacity 1 \
-	--region $AWS_DEFAULT_REGION
+echo "New instance with id $(cat monitoring.id)."
 
-# create a policy for scale out
-aws autoscaling put-scaling-policy \
-	--auto-scaling-group-name $CNV_AS_NAME \
-	--policy-name $CNV_OUT_POLICY_NAME \
-	--policy-type StepScaling \
-	--adjustment-type ChangeInCapacity \
-	--metric-aggregation Average \
-	--step-adjustments MetricIntervalLowerBound=0.0,ScalingAdjustment=1 \
-	--region $AWS_DEFAULT_REGION | jq -r '.PolicyARN' > policy-out.arn
+# wait for instance to be running
+aws ec2 wait instance-running --instance-ids $(cat monitoring.id)
+echo "New instance with id $(cat monitoring.id) is now running."
 
-# create cloud watch alert for over utilization
-aws cloudwatch put-metric-alarm \
-	--alarm-name $CNV_HIGH_CPU_ALARM_NAME \
-	--metric-name CPUUtilization \
-	--namespace AWS/EC2 \
-	--statistic Average \
-	--period 60 \
-	--evaluation-periods 2 \
-	--threshold 70 \
-	--comparison-operator GreaterThanThreshold \
-	--dimensions "Name=AutoScalingGroupName,Value=$CNV_AS_NAME" \
-	--alarm-actions $(cat policy-out.arn) \
-	--region $AWS_DEFAULT_REGION
+# extract DNS name
+aws ec2 describe-instances \
+	--instance-ids $(cat monitoring.id) | jq -r ".Reservations[0].Instances[0].NetworkInterfaces[0].PrivateIpAddresses[0].Association.PublicDnsName" > monitoring.dns
+echo "New instance with id $(cat monitoring.id) has address $(cat monitoring.dns)."
 
-# create a policy for scale in
-aws autoscaling put-scaling-policy \
-	--auto-scaling-group-name $CNV_AS_NAME \
-	--policy-name $CNV_IN_POLICY_NAME \
-	--policy-type StepScaling \
-	--adjustment-type ChangeInCapacity \
-	--metric-aggregation Average \
-	--step-adjustments MetricIntervalUpperBound=0.0,ScalingAdjustment=-1 \
-	--region $AWS_DEFAULT_REGION | jq -r '.PolicyARN' > policy-in.arn
+# wait for instance to have SSH ready.
+while ! nc -z $(cat monitoring.dns) 22; do
+	echo "Waiting for $(cat monitoring.dns):22 (SSH)..."
+	sleep 0.5
+done
+echo "New instance with id $(cat monitoring.id) is ready for SSH access."
 
-# create cloud watch alert for under utilization
-aws cloudwatch put-metric-alarm \
-	--alarm-name $CNV_LOW_CPU_ALARM_NAME \
-	--metric-name CPUUtilization \
-	--namespace AWS/EC2 \
-	--statistic Average \
-	--period 60 \
-	--evaluation-periods 2 \
-	--threshold 25 \
-	--comparison-operator LessThanThreshold \
-	--dimensions "Name=AutoScalingGroupName,Value=$CNV_AS_NAME" \
-	--alarm-actions $(cat policy-in.arn) \
-	--region $AWS_DEFAULT_REGION
+# install java
+cmd="sudo yum update -y; sudo yum install java-11-amazon-corretto.x86_64 -y;"
+ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat monitoring.dns) $cmd
 
+pushd ..; mvn clean package || exit 1; popd
 
+# copy files required for running
+jar_file=middleware-1.0.0-SNAPSHOT-jar-with-dependencies.jar
+scp -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ../middleware/target/$jar_file ec2-user@$(cat monitoring.dns):~
+scp -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ../middleware/launchInstance.sh ec2-user@$(cat monitoring.dns):~
+scp -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ../middleware/run ec2-user@$(cat monitoring.dns):~
+
+# start load balances / auto scaler
+cmd="cd ~ && AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY AWS_REGION=$AWS_DEFAULT_REGION AWS_KEYPAIR_NAME=$AWS_KEYPAIR_NAME AWS_SECURITY_GROUP=$AWS_SECURITY_GROUP AWS_AMI_ID=$(cat image.id) ./run"
+ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat monitoring.dns) $cmd
