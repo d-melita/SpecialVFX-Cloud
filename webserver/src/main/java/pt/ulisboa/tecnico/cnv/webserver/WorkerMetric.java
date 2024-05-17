@@ -26,4 +26,25 @@ public class WorkerMetric implements Serializable {
 	public Instant getTimestamp() {
 		return this.ts;
 	}
+
+	@Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("WorkerMetric{");
+        sb.append("uri='").append(uri).append('\'');
+        sb.append(", rawData={");
+        
+        for (Map.Entry<String, Long> entry : rawData.entrySet()) {
+            sb.append(entry.getKey()).append('=').append(entry.getValue()).append(", ");
+        }
+        
+        // Remove the last comma and space if rawData is not empty
+        if (!rawData.isEmpty()) {
+            sb.setLength(sb.length() - 2);
+        }
+
+        sb.append("}, ts=").append(ts);
+        sb.append('}');
+        return sb.toString();
+    }
 }
