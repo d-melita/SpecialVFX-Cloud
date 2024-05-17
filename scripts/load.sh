@@ -2,28 +2,31 @@
 
 function parse_blur {
     obj=$1
+    host=$2
     in="resources/$(echo $obj | jq -r '.input')"
     out="resources/$(echo $obj | jq -r '.output')"
     echo "Parsing blur (in=$in, out=$out)"
 
     pushd ../imageproc
-    ./script.sh "$in" "$out" blurimage
+    ./script.sh "$in" "$out" blurimage $host
     popd
 }
 
 function parse_enhance {
     obj=$1
+    host=$2
     in="resources/$(echo $obj | jq -r '.input')"
     out="resources/$(echo $obj | jq -r '.output')"
     echo "Parsing enhance (in=$in, out=$out)"
 
     pushd ../imageproc
-    ./script.sh "$in" "$out" enhanceimage
+    ./script.sh "$in" "$out" enhanceimage $host
     popd
 }
 
 function parse_raytracer {
     obj=$1
+    host=$2
     in="resources/$(echo $obj | jq -r '.input')"
     out="resources/$(echo $obj | jq -r '.output')"
     scols=$(echo $obj | jq -r '.scols')
@@ -44,25 +47,26 @@ function parse_raytracer {
     echo "Parsing raytracer (in=$in, texture=$text, out=$out)"
 
     pushd ../raytracer
-    ./script.sh $in $out $scols $srows $wcols $wrows $coff $roff $text
+    ./script.sh $in $out $scols $srows $wcols $wrows $coff $roff $host $text
     popd
 }
 
 function parse() {
     obj=$1
+    host=$2
     type=$(echo $obj | jq -r '.type')
 
     case "$type" in
         blur)
-            parse_blur $obj
+            parse_blur $obj $host
             ;;
 
         enhance)
-            parse_enhance $obj
+            parse_enhance $obj $host
             ;;
 
         ray-tracer)
-            parse_raytracer $obj
+            parse_raytracer $obj $host
             ;;
 
         *)
@@ -73,6 +77,7 @@ function parse() {
 }
 
 function run_client() {
+    host=$1
     for request in $(cat $load_config | jq -c '.[]'); do
         reps=$(echo $request | jq -r '.reps // empty')
 
@@ -82,18 +87,19 @@ function run_client() {
 
         echo "Running $reps repetitions"
         for i in $(seq 1 $reps); do
-            parse $request
+            parse $request $host
         done
     done
 }
 
-if [ $# -ne 2 ]; then
-    echo "Usage: $0 <load_config> <client_count>"
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 <load_config> <client_count> <hostname>"
     exit 1
 fi
 
 load_config="$1"
 client_count=$2
+host=$3
 
 if [ ! -f "$load_config" ]; then
     echo "Config file not found: $load_config"
@@ -102,5 +108,10 @@ fi
 
 echo "Loading configuration from: $load_config"
 
-run_client;
-# For each client run 
+rm -r client-output
+mkdir client-output
+for i in $(seq 1 $client_count); do
+    run_client $3 | tee client-output/client$i.out &
+done
+
+wait
