@@ -20,3 +20,15 @@ middleware/target/*
 middleware/target/maven-status/*
 raytracer/resources/*
 imageproc/resources/*
+
+scripts/config.sh
+scripts/.old/
+scripts/client-output/
+scripts/config-mine.sh
+scripts/*.pem
+scripts/image.id
+scripts/instance.dns
+scripts/instance.id
+scripts/monitoring.dns
+scripts/monitoring.id
+scripts/vfxserver.service

@@ -32,8 +32,8 @@ done
 echo "New instance with id $(cat monitoring.id) is ready for SSH access."
 
 # install java
-cmd="sudo yum update -y; sudo yum install java-11-amazon-corretto.x86_64 -y;"
-ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat monitoring.dns) $cmd
+cmd="sudo yum update -y && sudo yum install java-11-amazon-corretto.x86_64 -y;"
+ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat monitoring.dns) $cmd || exit 1
 
 pushd ..; mvn clean package || exit 1; popd
 
