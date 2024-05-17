@@ -37,7 +37,7 @@ public class InstanceMonitor implements Runnable {
     private static long OBS_TIME = 1000 * 60 * 20;
 
     // Time between each query for instance state
-    private static long QUERY_COOLDOWN = 1000 * 2;
+    private static long QUERY_COOLDOWN = 1000 * 30; // 30 seconds
 
     private static final int PORT = 8000;
 
@@ -69,18 +69,14 @@ public class InstanceMonitor implements Runnable {
             // update the metrics
             System.out.printf("Saving metrics for worker %s\n", worker.getId());
             this.awsDashboard.updateMetrics(worker, new InstanceMetrics(metric, worker.getId(), cpuUsage));
-
-            System.out.printf("At monitor: there are %d non empty\n", 
-                this.awsDashboard.getMetrics().entrySet().stream()
-                    .map(p -> p.getValue())
-                    .filter(p -> p.isPresent())
-                    .count());
         }
     }
 
     public List<WorkerMetric> getMetric(Worker worker) throws IOException, ClassNotFoundException {
 
-        URL url = new URL("http://" + worker.getIP() + ":" + worker.getPort() + "/stats");
+        String urlStr = "http://" + worker.getIP() + ":" + worker.getPort() + "/stats";
+        System.out.printf("Trying to get metric from %s\n", urlStr);
+        URL url = new URL(urlStr);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
 

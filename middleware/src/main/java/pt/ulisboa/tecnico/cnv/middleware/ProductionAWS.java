@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.cnv.middleware;
 
+import com.amazonaws.services.cloudwatch.model.Datapoint;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
@@ -20,11 +21,11 @@ import com.amazonaws.services.cloudwatch.model.Datapoint;
 import com.amazonaws.services.cloudwatch.model.Dimension;
 import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
 import com.amazonaws.services.ec2.model.Instance;
-import pt.ulisboa.tecnico.cnv.middleware.policies.ASPolicy;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalDouble;
 
 
 public class ProductionAWS implements AWSInterface {
@@ -34,35 +35,46 @@ public class ProductionAWS implements AWSInterface {
     private static final String AWS_SECURITY_GROUP = System.getenv("AWS_SECURITY_GROUP");
     private static final String AWS_AMI_ID = System.getenv("AWS_AMI_ID");
 
-    // Total observation time in milliseconds.
-    private static long OBS_TIME = 1000 * 60 * 20;
-    // Time between each query for instance state
-    private static long QUERY_COOLDOWN = 1000 * 10;
+    // how further back we look when collecting CPU usage
+    private static long OBS_TIME = 1000 * 60 * 10; // 10 minutes
 
-    private ASPolicy policy;
+    // Time between each query for instance state
+    private static long QUERY_COOLDOWN = 1000 * 30; // 30 seconds
+
     private AmazonEC2 ec2;
     private AmazonCloudWatch cloudWatch;
 
     private AWSDashboard awsDashboard;
 
-    public ProductionAWS(AWSDashboard awsDashboard, ASPolicy policy) {
-        this.awsDashboard = awsDashboard;
-        this.policy = policy;
+    public ProductionAWS(AWSDashboard awsDashboard) {
+        
+        System.out.println("AWS_REGION: " + AWS_REGION);
+        System.out.println("AWS_KEYPAIR_NAME: " + AWS_KEYPAIR_NAME);
+        System.out.println("AWS_SECURITY_GROUP: " + AWS_SECURITY_GROUP);
+        System.out.println("AWS_AMI_ID: " + AWS_AMI_ID);
 
+        this.awsDashboard = awsDashboard;
+
+        System.out.println("Trying to create ec2 client instance...");
         this.ec2 = AmazonEC2ClientBuilder.standard()
                 .withCredentials(new EnvironmentVariableCredentialsProvider())
                 .withRegion(AWS_REGION)
                 .build();
+
+        System.out.println("Done creating ec2 client instance");
+
+        System.out.println("Trying to create cloud watch client instance...");
 
         this.cloudWatch = AmazonCloudWatchClientBuilder.standard()
                 .withCredentials(new EnvironmentVariableCredentialsProvider())
                 .withRegion(AWS_REGION)
                 .build();
 
-        this.createInstance();
+        System.out.println("Done creating cloud watch client instance");
     }
 
     public Worker createInstance() {
+        System.out.println("Trying to spawn new instance");
         RunInstancesRequest runInstancesRequest = new RunInstancesRequest()
                 .withImageId(AWS_AMI_ID)
                 .withInstanceType("t2.micro")
@@ -79,6 +91,7 @@ public class ProductionAWS implements AWSInterface {
         if (newInstances.size() != 1) {
             throw new RuntimeException("Failed to create instances.");
         }
+        System.out.println("Reservation seems to be good");
 
         Instance instance = newInstances.get(0);
 
@@ -89,12 +102,8 @@ public class ProductionAWS implements AWSInterface {
                         .withValues(reservationId));
 
         Reservation reservation;
+        List<Reservation> reservations;
         while (!instance.getState().getName().equals("running")) {
-            reservation = ec2.describeInstances(describeRequest).getReservations().get(0);
-
-            instance = reservation.getInstances().get(0);
-            System.out.printf("The current state is %s\n", instance.getState().getName());
-
             System.out.printf("Waiting for instance to spawn for %d seconds\n",
                     QUERY_COOLDOWN / 1000);
             try {
@@ -102,6 +111,11 @@ public class ProductionAWS implements AWSInterface {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+
+            reservation = ec2.describeInstances(describeRequest).getReservations().get(0);
+
+            instance = reservation.getInstances().get(0);
+            System.out.printf("The current state is %s\n", instance.getState().getName());
         }
 
         return new ProductionWorker(instance);
@@ -143,21 +157,54 @@ public class ProductionAWS implements AWSInterface {
         // get the instance id
         String instanceId = instance.getInstanceId();
 
+        System.out.printf("Using cloud watch to find CPU usage for %s\n", instanceId);
+
         // get the instance type
         String instanceType = instance.getInstanceType();
+
+        // Calculate start and end times
+        Date endTime = new Date();
+        Date startTime = new Date(endTime.getTime() - OBS_TIME);
+        int period = 60; // 5 minutes
+
+        // Print the arguments
+        System.out.println("Namespace: AWS/EC2");
+        System.out.println("MetricName: CPUUtilization");
+        System.out.println("InstanceId: " + instanceId);
+        System.out.printf("Period: %d seconds\n", period);
+        System.out.println("StartTime: " + startTime);
+        System.out.println("EndTime: " + endTime);
+        System.out.println("Statistics: Average");
 
         // get the metric
         GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
                 .withNamespace("AWS/EC2")
                 .withMetricName("CPUUtilization")
                 .withDimensions(new Dimension().withName("InstanceId").withValue(instanceId))
-                .withPeriod(60)
-                .withStartTime(new Date(new Date().getTime() - OBS_TIME))
-                .withEndTime(new Date())
+                .withPeriod(period)
+                .withStartTime(startTime)
+                .withEndTime(endTime)
                 .withStatistics("Average");
 
-        double cpuUsage = this.cloudWatch.getMetricStatistics(request).getDatapoints().stream()
-                .mapToDouble(Datapoint::getAverage).average().orElse(0.0);
+        // FIXME: remove this orElse
+        List<Datapoint> datapoints = this.cloudWatch.getMetricStatistics(request).getDatapoints();
+
+        if (datapoints.size() == 0) {
+            System.out.println("no CPU measurment was made - list of datapoints is empty. Assuming load is low");
+            return 0;
+        }
+
+        OptionalDouble cpuUsageOpt = datapoints.stream()
+                .mapToDouble(Datapoint::getAverage).average();
+
+        if (!cpuUsageOpt.isPresent()) {
+            throw new RuntimeException("no CPU measurment was made, average failed");
+        }
+
+        double cpuUsage = cpuUsageOpt.getAsDouble();
+
+        System.out.printf("The average CPU usage computed for the last minute for %s is %f\n",
+                instanceId, cpuUsage);
 
         return cpuUsage;
     }

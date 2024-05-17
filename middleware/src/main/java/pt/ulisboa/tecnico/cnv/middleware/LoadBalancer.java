@@ -74,10 +74,13 @@ public class LoadBalancer implements HttpHandler, Runnable {
 
         // copy exchange body to forwarded connection
         if (exchange.getRequestBody() != null) {
-            forwardCon.setDoOutput(true);
+            // mark that application wants to write data to connection
+            forwardCon.setDoOutput(true); 
             forwardCon.getOutputStream().write(exchange.getRequestBody().readAllBytes());
             forwardCon.getOutputStream().close();
         }
+
+        forwardCon.connect();
 
         System.out.println("Waiting for worker to do its thing");
 
