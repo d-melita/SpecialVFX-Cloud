@@ -1,6 +1,7 @@
 #! /usr/bin/env bash
 
-TOOL=VFXICount
+# TOOL=VFXICount
+TOOL=VFXMetrics
 PKG_NAMES=pt.ulisboa.tecnico.cnv.imageproc,pt.ulisboa.tecnico.cnv.raytracer
 WRITE_DEST=output
 JAVASSIST_JAR_PATH=../javassist/target/javassist-1.0.0-SNAPSHOT-jar-with-dependencies.jar

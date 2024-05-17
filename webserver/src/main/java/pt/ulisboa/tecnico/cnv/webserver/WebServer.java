@@ -18,7 +18,7 @@ import pt.ulisboa.tecnico.cnv.imageproc.BlurImageHandler;
 import pt.ulisboa.tecnico.cnv.imageproc.EnhanceImageHandler;
 import pt.ulisboa.tecnico.cnv.raytracer.RaytracerHandler;
 
-import pt.ulisboa.tecnico.cnv.javassist.tools.VFXICount;
+import pt.ulisboa.tecnico.cnv.javassist.tools.VFXMetrics;
 
 public class WebServer {
 
@@ -39,9 +39,9 @@ public class WebServer {
 
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("just got a request");
-            VFXICount.resetStats();
+            VFXMetrics.resetStats();
             this.handler.handle(exchange);
-            Map<String, Long> rawStats = VFXICount.getStats();
+            Map<String, Long> rawStats = VFXMetrics.getStats();
 
             // enrich raw stats with context
             WorkerMetric metric = new WorkerMetric(exchange.getRequestURI().toString(), rawStats, Instant.now());
