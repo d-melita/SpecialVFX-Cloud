@@ -20,18 +20,22 @@ import pt.ulisboa.tecnico.cnv.middleware.policies.LBPolicy;
 public class LoadBalancer implements HttpHandler, Runnable {
 
     private AWSDashboard awsDashboard;
+    private AWSInterface awsInterface;
 
     private static final int TIMER = 10000;
 
     public static final int WORKER_PORT = 8000;
 
+    private static final int MAX_TRIES = 2;
+
     private LBPolicy policy;
 
     private Thread daemon;
 
-    public LoadBalancer(AWSDashboard awsDashboard, LBPolicy policy) {
+    public LoadBalancer(AWSDashboard awsDashboard, LBPolicy policy, AWSInterface awsInterface) {
         this.awsDashboard = awsDashboard;
         this.policy = policy;
+        this.awsInterface = awsInterface;
     }
 
     @Override
@@ -39,11 +43,13 @@ public class LoadBalancer implements HttpHandler, Runnable {
         System.out.println("Load balancer just got a new request");
         Optional<Worker> optWorker = this.policy.choose(this.awsDashboard.getMetrics());
 
+        // TODO - Add here try again logic - maybe calling lambdas/workers return a flag or true/false if it was successful or not
+        // if not successful, try again with another worker or lambda and do so while #attempts < threshold ?
         try {
             if (!optWorker.isPresent()) {
-                exchange.sendResponseHeaders(500, 0);
-                exchange.close();
-                System.out.println("No instances available");
+                // if there's no worker available, we invoke lambda
+                System.out.println("No instances available, invoking lambda");
+                invokeLambda(exchange);
                 return;
             }
             System.out.println("Worker selected, forwarding the request");
@@ -51,6 +57,28 @@ public class LoadBalancer implements HttpHandler, Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void invokeLambda(HttpExchange exchange) throws IOException {
+        String uri = exchange.getRequestURI().toString();  // functionName
+        Optional<Pair<String, Integer>> lambdaResponse = this.awsInterface.callLambda(uri, "payload");
+        // TODO - get payload from request, must be like below - (hardcoded for compiling reasons)
+        // String json = "{\"number\":\"10\"}";
+        // SdkBytes payload = SdkBytes.fromUtf8String(json) ;
+
+        if (lambdaResponse.isEmpty()) {
+            // TODO - maybe try again after failing and #attempts < threshold?
+            exchange.sendResponseHeaders(500, 0);
+            exchange.close();
+            return;
+        }
+
+        String response = lambdaResponse.get().getKey();
+
+        exchange.sendResponseHeaders(lambdaResponse.get().getValue(), response.length());
+        OutputStream os = exchange.getResponseBody();
+        os.write(response.getBytes());
+        exchange.close();
     }
 
     private void forwardTo(Worker worker, HttpExchange exchange) throws IOException {

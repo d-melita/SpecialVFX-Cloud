@@ -35,7 +35,7 @@ public class WebServer {
         System.out.println("AutoScaler started...");
 
         // Load Balancer
-        LoadBalancer loadBalancer = new LoadBalancer(awsDashboard, lbPolicy);
+        LoadBalancer loadBalancer = new LoadBalancer(awsDashboard, lbPolicy, awsInterface);
         loadBalancer.start();
         System.out.println("LoadBalancer started on port 8000...");
 

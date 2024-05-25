@@ -1,7 +1,9 @@
 package pt.ulisboa.tecnico.cnv.middleware;
 
 import com.amazonaws.services.ec2.model.Instance;
+import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Stack;
 
@@ -47,5 +49,9 @@ public class DummyAWS implements AWSInterface {
 
         processes.pop().destroy();
         return workers.pop();
+    }
+
+    public Optional<Pair<String, Integer>> callLambda(String content, String payload) {
+        return Optional.of(new Pair<>("", 0));
     }
 }

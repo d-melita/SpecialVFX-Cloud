@@ -15,13 +15,19 @@ import com. amazonaws. services. ec2.model. TerminateInstancesResult;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
-import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
+import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 import pt.ulisboa.tecnico.cnv.webserver.WorkerMetric;
 import com.amazonaws.services.cloudwatch.model.Datapoint;
 import com.amazonaws.services.cloudwatch.model.Dimension;
 import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
 import com.amazonaws.services.ec2.model.Instance;
+import com.amazonaws.services.lambda.AWSLambda;
+import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
+import com.amazonaws.services.lambda.model.InvokeRequest;
+import com.amazonaws.services.lambda.model.InvokeResult;
+import com.amazonaws.services.lambda.model.ServiceException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +49,7 @@ public class ProductionAWS implements AWSInterface {
 
     private AmazonEC2 ec2;
     private AmazonCloudWatch cloudWatch;
+    private AWSLambda lambdaClient;
 
     private AWSDashboard awsDashboard;
 
@@ -66,6 +73,11 @@ public class ProductionAWS implements AWSInterface {
         System.out.println("Trying to create cloud watch client instance...");
 
         this.cloudWatch = AmazonCloudWatchClientBuilder.standard()
+                .withCredentials(new EnvironmentVariableCredentialsProvider())
+                .withRegion(AWS_REGION)
+                .build();
+
+        this.lambdaClient = AWSLambdaClientBuilder.standard()
                 .withCredentials(new EnvironmentVariableCredentialsProvider())
                 .withRegion(AWS_REGION)
                 .build();
@@ -207,5 +219,22 @@ public class ProductionAWS implements AWSInterface {
                 instanceId, cpuUsage);
 
         return cpuUsage;
+    }
+
+    public Optional<Pair<String, Integer>> callLambda(String functionName, String jsonPayload) {
+        // FIXME - Change return type
+        InvokeRequest invokeRequest = new InvokeRequest()
+                .withFunctionName(functionName)
+                .withPayload(jsonPayload);
+
+        try {
+            InvokeResult result = this.lambdaClient.invoke(invokeRequest);
+            int statusCode = result.getStatusCode();
+            String response = new String(result.getPayload().array(), StandardCharsets.UTF_8);
+            return Optional.of(new Pair<>(response, statusCode));
+        } catch (ServiceException e) {
+            System.err.println(e.getMessage());  // Handle exception better? logging?
+            return Optional.empty();
+        }
     }
 }
