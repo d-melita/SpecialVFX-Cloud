@@ -85,11 +85,18 @@ public class LoadBalancer implements HttpHandler, Runnable {
     }
 
     private void invokeLambda(HttpExchange exchange) throws IOException {
-        String uri = exchange.getRequestURI().toString();  // functionName
-        Optional<Pair<String, Integer>> lambdaResponse = this.awsInterface.callLambda(uri, "payload");
-        // TODO - get payload from request, must be like below - (hardcoded for compiling reasons)
-        // String json = "{\"number\":\"10\"}";
-        // SdkBytes payload = SdkBytes.fromUtf8String(json) ;
+        String uri = exchange.getRequestURI().toString();
+        Optional<Pair<String, Integer>> lambdaResponse;
+
+        uri = uri.substring(1);
+        String[] parts = uri.split("\\?");
+
+        if (parts.length == 1) {
+            lambdaResponse = this.awsInterface.callLambda(uri+"-lambda", "{}");
+        } else {
+            String json = parsePayload(parts[1]);
+            lambdaResponse = this.awsInterface.callLambda(parts[0]+"-lambda", json);
+        }
 
         if (lambdaResponse.isEmpty()) {
             // TODO - maybe try again after failing and #attempts < threshold?
@@ -182,5 +189,20 @@ public class LoadBalancer implements HttpHandler, Runnable {
     public void start() {
         this.daemon = new Thread(this);
         daemon.start();
+    }
+
+    private static String parsePayload(String payload) {
+        // split payload using &
+        String[] params = payload.split("&");
+
+        // for each param, split it using "=" and add to a json that should be like {\"param1\":\"value1\", etc}
+        StringBuilder json = new StringBuilder("{");
+        for (String param : params) {
+            String[] keyValue = param.split("=");
+            json.append("\"").append(keyValue[0]).append("\":\"").append(keyValue[1]).append("\",");
+        }
+        json.deleteCharAt(json.length() - 1);
+        json.append("}");
+        return json.toString();
     }
 }
