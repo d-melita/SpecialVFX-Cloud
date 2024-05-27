@@ -24,7 +24,7 @@ aws lambda create-function \
 sleep 5
 
 aws lambda create-function \
-	--function-name enhance-lambda \
+	--function-name enhanceimage-lambda \
 	--zip-file fileb://../imageproc/target/imageproc-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
 	--handler pt.ulisboa.tecnico.cnv.imageproc.EnhanceImageHandler \
 	--runtime java11 \
@@ -35,7 +35,7 @@ aws lambda create-function \
 sleep 5
 
 aws lambda create-function \
-	--function-name blur-lambda \
+	--function-name blurimage-lambda \
 	--zip-file fileb://../imageproc/target/imageproc-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
 	--handler pt.ulisboa.tecnico.cnv.imageproc.BlurImageHandler \
 	--runtime java11 \
