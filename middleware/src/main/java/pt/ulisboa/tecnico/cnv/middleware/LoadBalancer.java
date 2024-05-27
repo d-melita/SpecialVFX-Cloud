@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.sun.net.httpserver.HttpHandler;
 import com.amazonaws.services.ec2.model.Instance;
@@ -15,10 +16,12 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
+import pt.ulisboa.tecnico.cnv.middleware.estimator.DummyEstimator;
+import pt.ulisboa.tecnico.cnv.middleware.estimator.Estimator;
 import pt.ulisboa.tecnico.cnv.middleware.policies.LBPolicy;
+import pt.ulisboa.tecnico.cnv.middleware.policies.PredictionBasedBalancing;
 
 public class LoadBalancer implements HttpHandler, Runnable {
-
     private AWSDashboard awsDashboard;
     private AWSInterface awsInterface;
 
@@ -30,18 +33,40 @@ public class LoadBalancer implements HttpHandler, Runnable {
 
     private LBPolicy policy;
 
+    private Estimator estimator;
+
     private Thread daemon;
 
-    public LoadBalancer(AWSDashboard awsDashboard, LBPolicy policy, AWSInterface awsInterface) {
+    private Map<Worker, Queue<Job>> status = new HashMap<>();
+
+    public LoadBalancer(AWSDashboard awsDashboard, AWSInterface awsInterface) {
         this.awsDashboard = awsDashboard;
-        this.policy = policy;
+        this.estimator = new DummyEstimator();
+        this.policy = new PredictionBasedBalancing(estimator, status);
         this.awsInterface = awsInterface;
+    }
+
+    public void registerWorker(Worker worker) {
+        if (this.status.containsKey(worker)) {
+            throw new RuntimeException("Trying to add existing worker.");
+        }
+
+        this.status.put(worker, new ConcurrentLinkedQueue<>());
+    }
+
+    public void deregisterWorker(Worker worker) {
+        if (!this.status.containsKey(worker)) {
+            throw new RuntimeException("Trying to remove existing worker.");
+        }
+
+        // TODO
+        this.status.remove(worker);
     }
 
     @Override
     public void handle(HttpExchange exchange) {
         System.out.println("Load balancer just got a new request");
-        Optional<Worker> optWorker = this.policy.choose(this.awsDashboard.getMetrics());
+        Optional<Worker> optWorker = this.policy.choose(exchange, this.awsDashboard.getMetrics());
 
         // TODO - Add here try again logic - maybe calling lambdas/workers return a flag or true/false if it was successful or not
         // if not successful, try again with another worker or lambda and do so while #attempts < threshold ?
@@ -110,6 +135,9 @@ public class LoadBalancer implements HttpHandler, Runnable {
 
         forwardCon.connect();
 
+        Job job = new Job(worker, estimator.estimate(exchange));
+        this.status.get(worker).add(job);
+
         System.out.println("Waiting for worker to do its thing");
 
         // get the response from worker
@@ -127,6 +155,9 @@ public class LoadBalancer implements HttpHandler, Runnable {
         while ((bytesRead = responseStream.read(buffer)) != -1) {
             outputStream.write(buffer, 0, bytesRead);
         }
+
+        while (this.status.get(worker).peek() != job) {}
+        this.status.get(worker).poll();
 
         System.out.println("Got response from worker");
 
