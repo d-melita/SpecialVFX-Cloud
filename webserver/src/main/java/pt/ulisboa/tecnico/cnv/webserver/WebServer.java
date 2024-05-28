@@ -25,6 +25,9 @@ public class WebServer {
     private static String outFile = "/tmp/randomFileForLogs.dsa";
     private static BlockingQueue<WorkerMetric> pendingStats = new LinkedBlockingQueue<>();
     private static BlockingQueue<WorkerMetric> statsServiceQueue = new LinkedBlockingQueue<>();
+    private static boolean PRODUCTION = true;
+
+    private static DynamoWriter dynamoWriter;
 
     /**
      * wraps a given handler
@@ -59,6 +62,7 @@ public class WebServer {
     /**
      * Pushes metrics to shared storage/file/makes it available for the AS/LB.
      */
+    /*
     private static void pushMetric(WorkerMetric metric) {
         pushMetricToFile(metric);
         pushMetricToService(metric);
@@ -76,17 +80,17 @@ public class WebServer {
         }
     }
 
-    private static void pushMetricToFile(WorkerMetric metric) {
+    /*private static void pushMetricToFile(WorkerMetric metric) {
         try (ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(outFile))) {
             outputStream.writeObject(metric);
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
+    }*/
 
     private static void handleWrites() {
         try {
-            while (true) pushMetric(pendingStats.take());
+            while (true) dynamoWriter.pushMetric(pendingStats.take());
         } catch (InterruptedException e) {
             // TODO: check if I don't want to die
             e.printStackTrace();
@@ -112,6 +116,12 @@ public class WebServer {
             }
         } else {
             port = 8000;
+        }
+
+        if (PRODUCTION) {
+            dynamoWriter = new DynamoWriterProduction();
+        } else {
+            dynamoWriter = new DynamoWriterDummy();
         }
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
