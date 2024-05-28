@@ -2,6 +2,18 @@ package pt.ulisboa.tecnico.cnv.middleware;
 
 import com.amazonaws.services.cloudwatch.model.Datapoint;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
+import com.amazonaws.services.dynamodbv2.model.Condition;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
@@ -40,6 +52,8 @@ public class ProductionAWS implements AWSInterface {
     private static final String AWS_KEYPAIR_NAME = System.getenv("AWS_KEYPAIR_NAME");
     private static final String AWS_SECURITY_GROUP = System.getenv("AWS_SECURITY_GROUP");
     private static final String AWS_AMI_ID = System.getenv("AWS_AMI_ID");
+    private final String DYNAMO_DB_TABLE_NAME = System.getenv("DYNAMO_DB_TABLE_NAME");
+
 
     // how further back we look when collecting CPU usage
     private static long OBS_TIME = 1000 * 60 * 10; // 10 minutes
@@ -50,6 +64,7 @@ public class ProductionAWS implements AWSInterface {
     private AmazonEC2 ec2;
     private AmazonCloudWatch cloudWatch;
     private AWSLambda lambdaClient;
+    private AmazonDynamoDB dynamoDB;
 
     private AWSDashboard awsDashboard;
 
@@ -81,6 +96,12 @@ public class ProductionAWS implements AWSInterface {
                 .withCredentials(new EnvironmentVariableCredentialsProvider())
                 .withRegion(AWS_REGION)
                 .build();
+
+        this.dynamoDB = AmazonDynamoDBAsyncClientBuilder.standard().withRegion(AWS_REGION)
+                .withCredentials(new EnvironmentVariableCredentialsProvider()).build();
+
+        this.createTableIfNotExists();
+
 
         System.out.println("Done creating cloud watch client instance");
     }
@@ -237,4 +258,36 @@ public class ProductionAWS implements AWSInterface {
             return Optional.empty();
         }
     }
+
+    /*
+     * Create DynamoDB table if it does not exist yet
+     * Stores statistics about each request
+     */
+    private void createTableIfNotExists() {
+        // Create a table with a primary hash key named 'name', which holds a string
+        CreateTableRequest createTableRequest = new CreateTableRequest()
+                .withTableName(DYNAMO_DB_TABLE_NAME)
+                .withAttributeDefinitions(new AttributeDefinition()
+                        .withAttributeName("RequestParams")
+                        .withAttributeType("S"))
+                .withKeySchema(new KeySchemaElement()
+                        .withAttributeName("RequestParams")
+                        .withKeyType("HASH"))
+                .withProvisionedThroughput(new ProvisionedThroughput()
+                        .withReadCapacityUnits(1L)
+                        .withWriteCapacityUnits(1L))
+                .withTableName("STANDARD");
+
+        // Create table if it does not exist yet
+        TableUtils.createTableIfNotExists(dynamoDB, createTableRequest);
+
+        try {
+            // wait for the table to move into ACTIVE state
+            TableUtils.waitUntilActive(dynamoDB, DYNAMO_DB_TABLE_NAME);
+        } catch (InterruptedException e) {
+               e.printStackTrace();
+        }
+    }
+
+    /* TODO - read from dynamoDB and update values */
 }
