@@ -80,7 +80,7 @@ public class DummyAWS implements AWSInterface {
     }
 
     public Optional<Pair<String, Integer>> callLambda(String lambdaName, String json) {
-        System.out.printf("lambda %s called with %s (%b)\n", lambdaName, json, lambdaName.equals("raytracer"));
+        // System.out.printf("lambda %s called with %s (%b)\n", lambdaName, json, lambdaName.equals("raytracer"));
         if (this.handlers.containsKey(lambdaName)) {
             // do similar to what lambda will do
             try {

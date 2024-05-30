@@ -91,6 +91,7 @@ public class WebServer {
             System.out.println("just got a request");
             long startTime = System.nanoTime();
             VFXMetrics.resetStats();
+            System.out.println("handing out request to handler");
             this.handler.handle(exchange);
             long endTime = System.nanoTime();
 

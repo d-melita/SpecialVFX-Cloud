@@ -4,28 +4,10 @@ def gen_image_proc_script(t):
     FILE=f"{t}.json"
     reps = 10
 
-    # images = [
-    #     "airplane.jpg",
-    #     "bird.jpg",
-    #     "cat.jpg",
-    #     "dark.png",
-    #     "deer.jpg",
-    #     "dog.jpg",
-    #     "dull.jpg",
-    #     "frog.jpg",
-    #     "horse.jpg",
-    #     "kodim17.jpg",
-    #     "ship.jpg",
-    #     "truck.jpg"
-    # ]
-
     images = [
         "empty-200x200.png",
-        "empty-200x400.png",
         "empty-200x600.png",
-        "empty-200x800.png",
         "empty-200x1000.png",
-        "empty-200x1200.png",
         "empty-200x1400.png",
         "empty-200x1800.png",
         "empty-200x2200.png",
@@ -122,60 +104,7 @@ def gen_image_proc_script(t):
         "empty-3800x2600.png",
         "empty-3800x3000.png",
         "empty-3800x3400.png",
-        "empty-3800x3800.png"
-    ]
-
-    images = [
-        "empty-143x4651.png",
-        "empty-465x4876.png",
-        "empty-733x1688.png",
-        "empty-782x960.png",
-        "empty-832x3080.png",
-        "empty-962x987.png",
-        "empty-1057x2814.png",
-        "empty-1090x268.png",
-        "empty-1182x1814.png",
-        "empty-1468x2003.png",
-        "empty-1664x598.png",
-        "empty-1788x2085.png",
-        "empty-1940x4220.png",
-        "empty-2148x2715.png",
-        "empty-2324x4870.png",
-        "empty-2557x2863.png",
-        "empty-2566x1311.png",
-        "empty-2664x490.png",
-        "empty-2820x3690.png",
-        "empty-2901x1975.png",
-        "empty-2936x4153.png",
-        "empty-3310x1522.png",
-        "empty-3324x4950.png",
-        "empty-3461x3536.png",
-        "empty-3608x4771.png",
-        "empty-3660x4855.png",
-        "empty-3719x3915.png",
-        "empty-3745x2303.png",
-        "empty-3847x4029.png",
-        "empty-3894x2160.png",
-        "empty-3948x3184.png",
-        "empty-4036x1023.png",
-        "empty-4052x4204.png",
-        "empty-4097x200.png",
-        "empty-4106x4958.png",
-        "empty-4145x2120.png",
-        "empty-4179x1403.png",
-        "empty-4344x677.png",
-        "empty-4436x2632.png",
-        "empty-4497x18.png",
-        "empty-4592x2738.png",
-        "empty-4627x3282.png",
-        "empty-4652x714.png",
-        "empty-4675x2369.png",
-        "empty-4688x1107.png",
-        "empty-4698x2459.png",
-        "empty-4816x3594.png",
-        "empty-4832x2585.png",
-        "empty-4836x4440.png",
-        "empty-4916x4361.png"
+        "empty-3800x3800.png",
     ]
 
     def write_single(image, fh):
@@ -353,4 +282,5 @@ def try_height():
 def try_shape():
     pass
 
-try_height()
+gen_image_proc_script("blur")
+# try_height()

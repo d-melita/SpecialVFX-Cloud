@@ -26,6 +26,7 @@ public abstract class ImageProcessingHandler implements HttpHandler, RequestHand
 
     public String actuallyHandle(URI requestedUri, InputStream stream)  {
         String result = new BufferedReader(new InputStreamReader(stream)).lines().collect(Collectors.joining("\n"));
+        // System.out.printf("String result = %s\n", result);
         String[] resultSplits = result.split(",");
         String format = resultSplits[0].split("/")[1].split(";")[0];
 
@@ -46,6 +47,7 @@ public abstract class ImageProcessingHandler implements HttpHandler, RequestHand
             ImageIO.write(bi, format, baos);
             return Base64.getEncoder().encodeToString(baos.toByteArray());
         } catch (IOException e) {
+            e.printStackTrace();
             return e.toString();
         }
     }
@@ -53,22 +55,27 @@ public abstract class ImageProcessingHandler implements HttpHandler, RequestHand
     @Override
     public void handle(HttpExchange t) throws IOException {
         // Handling CORS
-        t.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        try {
+            t.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
 
-        if (t.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
-            t.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-            t.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
-            t.sendResponseHeaders(204, -1);
-            return;
+            if (t.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                t.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
+                t.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+                t.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            InputStream stream = t.getRequestBody();
+
+            String output = this.actuallyHandle(null, stream);
+            t.sendResponseHeaders(200, output.length());
+            OutputStream os = t.getResponseBody();
+            os.write(output.getBytes());
+            os.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
         }
-
-        InputStream stream = t.getRequestBody();
-
-        String output = this.actuallyHandle(null, stream);
-        t.sendResponseHeaders(200, output.length());
-        OutputStream os = t.getResponseBody();
-        os.write(output.getBytes());
-        os.close();
     }
 
     @Override

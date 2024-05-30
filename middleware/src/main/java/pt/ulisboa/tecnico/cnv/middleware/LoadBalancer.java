@@ -18,6 +18,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 import pt.ulisboa.tecnico.cnv.middleware.estimator.DummyEstimator;
+import pt.ulisboa.tecnico.cnv.middleware.estimator.OnlineBasedEstimator;
 import pt.ulisboa.tecnico.cnv.middleware.estimator.Estimator;
 import pt.ulisboa.tecnico.cnv.middleware.policies.LBPolicy;
 import pt.ulisboa.tecnico.cnv.middleware.policies.PredictionBasedBalancing;
@@ -47,9 +48,11 @@ public class LoadBalancer implements HttpHandler, Runnable {
 
     public LoadBalancer(AWSDashboard awsDashboard, AWSInterface awsInterface) {
         this.awsDashboard = awsDashboard;
-        this.estimator = new DummyEstimator();
-        // this.policy = new PredictionBasedBalancing(estimator, status);
-        this.policy = new LambdaOnlyBalancing();
+        awsDashboard.registerRegisterWorker(w -> this.registerWorker(w));
+        awsDashboard.registerDeregisterWorker(w -> this.deregisterWorker(w));
+        this.estimator = new OnlineBasedEstimator();
+        this.policy = new PredictionBasedBalancing(estimator, status);
+        // this.policy = new LambdaOnlyBalancing();
         this.awsInterface = awsInterface;
     }
 
@@ -161,6 +164,8 @@ public class LoadBalancer implements HttpHandler, Runnable {
             forwardCon.getOutputStream().close();
         }
 
+
+        long start = System.nanoTime();
         forwardCon.connect();
 
         Job job = new Job(worker, estimator.estimate(exchange));
@@ -170,6 +175,9 @@ public class LoadBalancer implements HttpHandler, Runnable {
 
         // get the response from worker
         InputStream responseStream = forwardCon.getInputStream();
+
+        // update information with actual time taken
+        this.estimator.updateInfo(exchange,  System.nanoTime() - start);
 
         // copy response code
         exchange.sendResponseHeaders(forwardCon.getResponseCode(), 0);
@@ -188,6 +196,7 @@ public class LoadBalancer implements HttpHandler, Runnable {
         this.status.get(worker).poll();
 
         System.out.println("Got response from worker");
+
 
         outputStream.close();
         responseStream.close();
