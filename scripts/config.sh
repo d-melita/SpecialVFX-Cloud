@@ -2,7 +2,7 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-export AWS_DEFAULT_REGION=eu-west-1
+export AWS_REGION=eu-west-1
 export AWS_DEFAULT_AZ=eu-west-1a
 export AWS_ACCOUNT_ID=
 export AWS_ACCESS_KEY_ID=

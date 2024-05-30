@@ -13,7 +13,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder;
 
 public class DynamoWriterProduction implements DynamoWriter {
 
-    private final String AWS_REGION = System.getenv("AWS_DEFAULT_REGION");
+    private final String AWS_REGION = System.getenv("AWS_REGION");
     private final String DYNAMO_DB_TABLE_NAME = System.getenv("DYNAMO_DB_TABLE_NAME");
 
     private final AmazonDynamoDB dynamoDB;

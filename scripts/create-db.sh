@@ -8,11 +8,13 @@ aws dynamodb create-table \
   --region $AWS_REGION \
   --table-name $DYNAMO_DB_TABLE_NAME \
   --attribute-definition \
-    AttributeName=RequestParams,AttributeType=S \
+    AttributeName=ReplicaID,AttributeType=S \
+    AttributeName=SeqNb,AttributeType=N \
   --key-schema \
-    AttributeName=RequestParams,KeyType=HASH \
+    AttributeName=ReplicaID,KeyType=HASH \
+    AttributeName=SeqNb,KeyType=RANGE \
   --provisioned-throughput \
-    ReadCapacityUnits=1,WriteCapacityUnits=1 \
+    ReadCapacityUnits=1,WriteCapacityUnits=10 \
   --table-class STANDARD 2>&1 | jq .
 
 echo "Waiting until table is available"

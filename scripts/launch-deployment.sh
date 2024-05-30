@@ -44,5 +44,5 @@ scp -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ../middleware/launch
 scp -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ../middleware/run ec2-user@$(cat monitoring.dns):~
 
 # start load balances / auto scaler
-cmd="cd ~ && AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY AWS_REGION=$AWS_DEFAULT_REGION AWS_KEYPAIR_NAME=$AWS_KEYPAIR_NAME AWS_SECURITY_GROUP=$AWS_SECURITY_GROUP AWS_AMI_ID=$(cat image.id) ./run"
+cmd="cd ~ && AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY AWS_REGION=$AWS_REGION AWS_KEYPAIR_NAME=$AWS_KEYPAIR_NAME AWS_SECURITY_GROUP=$AWS_SECURITY_GROUP AWS_AMI_ID=$(cat image.id) ./run"
 ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat monitoring.dns) $cmd

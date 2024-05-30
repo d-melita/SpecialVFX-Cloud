@@ -12,6 +12,7 @@ flake.lock
 
 .vscode/
 
+common/target/*
 raytracer/target/*
 webserver/target/*
 imageproc/target/*

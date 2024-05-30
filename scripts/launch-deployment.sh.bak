@@ -12,7 +12,7 @@ aws elb create-load-balancer \
 aws elb configure-health-check \
 	--load-balancer-name $CNV_LB_NAME \
 	--health-check Target=HTTP:8000/test,Interval=30,UnhealthyThreshold=2,HealthyThreshold=10,Timeout=5 \
-	--region $AWS_DEFAULT_REGION
+	--region $AWS_REGION
 
 # create launch configuration
 aws autoscaling create-launch-configuration \
@@ -22,7 +22,7 @@ aws autoscaling create-launch-configuration \
 	--security-groups $AWS_SECURITY_GROUP \
 	--key-name $AWS_KEYPAIR_NAME \
 	--instance-monitoring Enabled=true \
-	--region $AWS_DEFAULT_REGION
+	--region $AWS_REGION
 
 # create auto scaling group
 aws autoscaling create-auto-scaling-group \
@@ -35,7 +35,7 @@ aws autoscaling create-auto-scaling-group \
 	--min-size 1 \
 	--max-size 3 \
 	--desired-capacity 1 \
-	--region $AWS_DEFAULT_REGION
+	--region $AWS_REGION
 
 # create a policy for scale out
 aws autoscaling put-scaling-policy \
@@ -45,7 +45,7 @@ aws autoscaling put-scaling-policy \
 	--adjustment-type ChangeInCapacity \
 	--metric-aggregation Average \
 	--step-adjustments MetricIntervalLowerBound=0.0,ScalingAdjustment=1 \
-	--region $AWS_DEFAULT_REGION | jq -r '.PolicyARN' > policy-out.arn
+	--region $AWS_REGION | jq -r '.PolicyARN' > policy-out.arn
 
 # create cloud watch alert for over utilization
 aws cloudwatch put-metric-alarm \
@@ -59,7 +59,7 @@ aws cloudwatch put-metric-alarm \
 	--comparison-operator GreaterThanThreshold \
 	--dimensions "Name=AutoScalingGroupName,Value=$CNV_AS_NAME" \
 	--alarm-actions $(cat policy-out.arn) \
-	--region $AWS_DEFAULT_REGION
+	--region $AWS_REGION
 
 # create a policy for scale in
 aws autoscaling put-scaling-policy \
@@ -69,7 +69,7 @@ aws autoscaling put-scaling-policy \
 	--adjustment-type ChangeInCapacity \
 	--metric-aggregation Average \
 	--step-adjustments MetricIntervalUpperBound=0.0,ScalingAdjustment=-1 \
-	--region $AWS_DEFAULT_REGION | jq -r '.PolicyARN' > policy-in.arn
+	--region $AWS_REGION | jq -r '.PolicyARN' > policy-in.arn
 
 # create cloud watch alert for under utilization
 aws cloudwatch put-metric-alarm \
@@ -83,6 +83,6 @@ aws cloudwatch put-metric-alarm \
 	--comparison-operator LessThanThreshold \
 	--dimensions "Name=AutoScalingGroupName,Value=$CNV_AS_NAME" \
 	--alarm-actions $(cat policy-in.arn) \
-	--region $AWS_DEFAULT_REGION
+	--region $AWS_REGION
 
 
