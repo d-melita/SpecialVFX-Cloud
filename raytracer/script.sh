@@ -22,6 +22,9 @@ function main() {
         return 1
     fi
 
+    port=8000
+    # port=9000
+
     local input_file=$1
     local output_file=$2
     local scols=$3
@@ -49,10 +52,10 @@ function main() {
         printf "No texture file provided. Skipping texture data addition to JSON.\n"
     fi
 
-    echo "Running: curl -X POST http://$host:8000/raytracer?scols=$scols\&srows=$srows\&wcols=$wcols\&wrows=$wrows\&coff=$coff\&roff=$roff\&aa=false --data @"$payload" > $result"
+    echo "Running: curl -X POST http://$host:$port/raytracer?scols=$scols\&srows=$srows\&wcols=$wcols\&wrows=$wrows\&coff=$coff\&roff=$roff\&aa=false --data @"$payload" > $result"
 
     # Send the request.
-    curl -X POST http://$host:8000/raytracer?scols=$scols\&srows=$srows\&wcols=$wcols\&wrows=$wrows\&coff=$coff\&roff=$roff\&aa=false --data @"$payload" > $result
+    curl -X POST http://$host:$port/raytracer?scols=$scols\&srows=$srows\&wcols=$wcols\&wrows=$wrows\&coff=$coff\&roff=$roff\&aa=false --data @"$payload" > $result
 
     # Remove a formatting string (remove everything before the comma).
     sed -i 's/^[^,]*,//' $result

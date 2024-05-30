@@ -4,13 +4,16 @@ import pt.ulisboa.tecnico.cnv.webserver.WorkerMetric;
 
 import java.util.List;
 
-public class InstanceMetrics {
+/**
+ * 
+ */
+public class AggregateWorkerMetrics {
     
     private List<WorkerMetric> metrics;
     private String instanceId;
     private double cpuUsage;
 
-    public InstanceMetrics(List<WorkerMetric> metrics, String instanceId, double cpuUsage){
+    public AggregateWorkerMetrics(List<WorkerMetric> metrics, String instanceId, double cpuUsage){
         this.metrics = metrics;
         this.instanceId = instanceId;
         this.cpuUsage = cpuUsage;

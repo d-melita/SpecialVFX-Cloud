@@ -1,19 +1,22 @@
 package pt.ulisboa.tecnico.cnv.middleware;
 
+/**
+ * Representation of running request at worker
+ */
 public class Job {
     private Worker worker;
     private long duration;
 
-    Job(Worker worker, long duration) {
+    public Job(Worker worker, long duration) {
         this.worker = worker;
         this.duration = duration;
     }
 
-    Worker getWorkerId() {
+    public Worker getWorkerId() {
         return this.worker;
     }
 
-    long getDuration() {
+    public long getDuration() {
         return this.duration;
     }
 }

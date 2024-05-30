@@ -35,7 +35,7 @@ public class WebServer {
     private static String outFile = "/tmp/randomFileForLogs.dsa";
     private static BlockingQueue<WorkerMetric> pendingStats = new LinkedBlockingQueue<>();
     private static BlockingQueue<WorkerMetric> statsServiceQueue = new LinkedBlockingQueue<>();
-    private static boolean PRODUCTION = true;
+    private static boolean PRODUCTION = false;
 
     private static DynamoWriter dynamoWriter;
 

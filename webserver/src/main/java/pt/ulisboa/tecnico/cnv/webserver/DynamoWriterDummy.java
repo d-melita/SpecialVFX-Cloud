@@ -6,7 +6,7 @@ import java.io.ObjectOutputStream;
 
 public class DynamoWriterDummy implements DynamoWriter {
 
-    private static String outFile = "/tmp/randomFileForLogs.dsa";
+    private static String outFile = "/tmp/dynamoDummy.dsa";
 
     @Override
     public void pushMetric(WorkerMetric metric) {

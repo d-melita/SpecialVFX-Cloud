@@ -1,14 +1,19 @@
 package pt.ulisboa.tecnico.cnv.middleware.policies;
 
 import com.amazonaws.services.ec2.model.Instance;
-import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
+import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
 import pt.ulisboa.tecnico.cnv.middleware.Worker;
+import com.sun.net.httpserver.HttpExchange;
 
 import java.util.*;
 
-public class CpuBasedBalancing implements LBPolicy{
-    // Class used to decided to which instance the request should be forwarded
-    public Optional<Worker> choose(Map<Worker, Optional<InstanceMetrics>> metrics) {
+/**
+ * Load-balancing policy that routes requests to the least loaded replica (as
+ * measured by CPU usage values).
+ */
+public class CpuBasedBalancing implements LBPolicy {
+
+    public Optional<Worker> choose(HttpExchange exchange, Map<Worker, Optional<AggregateWorkerMetrics>> metrics) {
         System.out.printf("Trying to choose a worker (there are %d options)\n", metrics.size());
 
         Optional<Worker> worker = metrics.entrySet().stream()
@@ -26,7 +31,7 @@ public class CpuBasedBalancing implements LBPolicy{
         return worker;
     }
 
-    private class Pair<A, B> {
+    static private class Pair<A, B> {
         private A key;
         private B value;
 

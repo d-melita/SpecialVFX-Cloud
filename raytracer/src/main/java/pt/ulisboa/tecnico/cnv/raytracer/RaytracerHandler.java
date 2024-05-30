@@ -18,25 +18,14 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.io.InputStream;
+import java.io.InputStream;
 
 public class RaytracerHandler implements HttpHandler, RequestHandler<Map<String, String>, String> {
 
     private final static ObjectMapper mapper = new ObjectMapper();
-
-    @Override
-    public void handle(HttpExchange he) throws IOException {
-        // Handling CORS
-        he.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-
-        if (he.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
-            he.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-            he.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
-            he.sendResponseHeaders(204, -1);
-            return;
-        }
-
-        // Parse request
-        URI requestedUri = he.getRequestURI();
+    
+    public String actuallyHandle(URI requestedUri, InputStream stream) throws IOException {
         String query = requestedUri.getRawQuery();
         Map<String, String> parameters = queryToMap(query);
 
@@ -49,7 +38,6 @@ public class RaytracerHandler implements HttpHandler, RequestHandler<Map<String,
         Main.ANTI_ALIAS = Boolean.parseBoolean(parameters.getOrDefault("aa", "false"));
         Main.MULTI_THREAD = Boolean.parseBoolean(parameters.getOrDefault("multi", "false"));
 
-        InputStream stream = he.getRequestBody();
         Map<String, Object> body = mapper.readValue(stream, new TypeReference<>() {});
 
         byte[] input = ((String) body.get("scene")).getBytes();
@@ -65,6 +53,25 @@ public class RaytracerHandler implements HttpHandler, RequestHandler<Map<String,
 
         byte[] result = handleRequest(input, texmap, scols, srows, wcols, wrows, coff, roff);
         String response = String.format("data:image/bmp;base64,%s", Base64.getEncoder().encodeToString(result));
+        return response;
+    }
+
+    @Override
+    public void handle(HttpExchange he) throws IOException {
+        // Handling CORS
+        he.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+
+        if (he.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+            he.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
+            he.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+            he.sendResponseHeaders(204, -1);
+            return;
+        }
+
+        // Parse request
+        URI requestedUri = he.getRequestURI();
+        InputStream stream = he.getRequestBody();
+        String response = actuallyHandle(requestedUri, stream);
 
         he.sendResponseHeaders(200, response.length());
         OutputStream os = he.getResponseBody();

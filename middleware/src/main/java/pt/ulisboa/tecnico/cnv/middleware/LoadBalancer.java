@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
+import java.util.Base64;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.sun.net.httpserver.HttpHandler;
@@ -20,7 +21,12 @@ import pt.ulisboa.tecnico.cnv.middleware.estimator.DummyEstimator;
 import pt.ulisboa.tecnico.cnv.middleware.estimator.Estimator;
 import pt.ulisboa.tecnico.cnv.middleware.policies.LBPolicy;
 import pt.ulisboa.tecnico.cnv.middleware.policies.PredictionBasedBalancing;
+import pt.ulisboa.tecnico.cnv.middleware.policies.LambdaOnlyBalancing;
 
+/*
+ * Load-Balancer routes HTTP requests to workers. Needs to be notified of
+ * creation and destruction of workers.
+ */
 public class LoadBalancer implements HttpHandler, Runnable {
     private AWSDashboard awsDashboard;
     private AWSInterface awsInterface;
@@ -42,10 +48,14 @@ public class LoadBalancer implements HttpHandler, Runnable {
     public LoadBalancer(AWSDashboard awsDashboard, AWSInterface awsInterface) {
         this.awsDashboard = awsDashboard;
         this.estimator = new DummyEstimator();
-        this.policy = new PredictionBasedBalancing(estimator, status);
+        // this.policy = new PredictionBasedBalancing(estimator, status);
+        this.policy = new LambdaOnlyBalancing();
         this.awsInterface = awsInterface;
     }
 
+    /*
+     * Notifies load balancer of creation of new worker.
+     */
     public void registerWorker(Worker worker) {
         if (this.status.containsKey(worker)) {
             throw new RuntimeException("Trying to add existing worker.");
@@ -54,15 +64,26 @@ public class LoadBalancer implements HttpHandler, Runnable {
         this.status.put(worker, new ConcurrentLinkedQueue<>());
     }
 
+    /*
+     * Notifies load balancer of imminent destruction of a worker.
+     * Blocks until load balancer ensure that no requests are running on the
+     * about-to-be-destructed worker.
+     */
     public void deregisterWorker(Worker worker) {
         if (!this.status.containsKey(worker)) {
             throw new RuntimeException("Trying to remove existing worker.");
         }
 
-        // TODO
+        // TODO: wait for worker queue to be empty
+
         this.status.remove(worker);
     }
 
+
+    /**
+     * Handles HTTP request, by routing to worker/lambda and forward reply based
+     * on an auto-balancing policy.
+     */
     @Override
     public void handle(HttpExchange exchange) {
         System.out.println("Load balancer just got a new request");
@@ -72,8 +93,7 @@ public class LoadBalancer implements HttpHandler, Runnable {
         // if not successful, try again with another worker or lambda and do so while #attempts < threshold ?
         try {
             if (!optWorker.isPresent()) {
-                // if there's no worker available, we invoke lambda
-                System.out.println("No instances available, invoking lambda");
+                System.out.println("No good workers available, invoking lambda");
                 invokeLambda(exchange);
                 return;
             }
@@ -81,22 +101,26 @@ public class LoadBalancer implements HttpHandler, Runnable {
             forwardTo(optWorker.get(), exchange);
         } catch (IOException e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
+
+    /**
+     * Invokes lambda to handle request.
+     */
     private void invokeLambda(HttpExchange exchange) throws IOException {
-        String uri = exchange.getRequestURI().toString();
-        Optional<Pair<String, Integer>> lambdaResponse;
 
-        uri = uri.substring(1);
-        String[] parts = uri.split("\\?");
-
-        if (parts.length == 1) {
-            lambdaResponse = this.awsInterface.callLambda(uri+"-lambda", "{}");
-        } else {
-            String json = parsePayload(parts[1]);
-            lambdaResponse = this.awsInterface.callLambda(parts[0]+"-lambda", json);
+        System.out.println("Invoke lambda called");
+        String lambdaName;
+        try {
+            lambdaName = exchange.getRequestURI().toString().split("\\?")[0].substring(1);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
         }
+        String json = encodeRequestAsJson(exchange);
+        Optional<Pair<String, Integer>> lambdaResponse = this.awsInterface.callLambda(lambdaName, json);
 
         if (lambdaResponse.isEmpty()) {
             // TODO - maybe try again after failing and #attempts < threshold?
@@ -113,6 +137,9 @@ public class LoadBalancer implements HttpHandler, Runnable {
         exchange.close();
     }
 
+    /*
+     * Forwards request to running worker.
+     */
     private void forwardTo(Worker worker, HttpExchange exchange) throws IOException {
         System.out.printf("Forwarding request to worker %s\n", worker.getId());
         System.out.printf("The method is %s\n", exchange.getRequestMethod());
@@ -173,6 +200,9 @@ public class LoadBalancer implements HttpHandler, Runnable {
         forwardCon.disconnect();
     }
 
+    /**
+     * Starts load balancing server.
+     */
     public void run() {
         HttpServer server = null;
         try {
@@ -191,6 +221,9 @@ public class LoadBalancer implements HttpHandler, Runnable {
         daemon.start();
     }
 
+    /*
+     *
+     **/
     private static String parsePayload(String payload) {
         // split payload using &
         String[] params = payload.split("&");
@@ -204,5 +237,23 @@ public class LoadBalancer implements HttpHandler, Runnable {
         json.deleteCharAt(json.length() - 1);
         json.append("}");
         return json.toString();
+    }
+
+    /**
+     * Encodes HTTP request 
+     */
+    private String encodeRequestAsJson(HttpExchange exchange) throws IOException {
+        String uri = exchange.getRequestURI().toString();
+        byte[] body = exchange.getRequestBody().readAllBytes();
+        String bodyEncoded = Base64.getEncoder().encodeToString(body);
+
+        return String.format("{\"uri\": \"%s\", \"body\": \"%s\"}", uri, bodyEncoded);
+    }
+
+    /**
+     * Decodes the JSON response and replies on exchange.
+     */
+    private void decodeJsonToResponse(HttpExchange exchange, String json) {
+        // TODO 
     }
 }

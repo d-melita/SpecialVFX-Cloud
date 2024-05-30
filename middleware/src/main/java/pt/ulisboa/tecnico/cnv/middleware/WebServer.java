@@ -13,7 +13,8 @@ import pt.ulisboa.tecnico.cnv.middleware.policies.CpuBasedBalancing;
 
 public class WebServer {
  
-    private static boolean PRODUCTION = true;
+    // FIXME: there are two production variables
+    private static boolean PRODUCTION = false;
 
     public static void main(String[] args) throws Exception {
 
@@ -21,7 +22,6 @@ public class WebServer {
         AWSInterface awsInterface;
 
         ASPolicy asPolicy = new CpuBasedScaling(25, 75);
-        LBPolicy lbPolicy = new CpuBasedBalancing();
 
         if (PRODUCTION) {
             awsInterface = new ProductionAWS(awsDashboard);
@@ -35,7 +35,7 @@ public class WebServer {
         System.out.println("AutoScaler started...");
 
         // Load Balancer
-        LoadBalancer loadBalancer = new LoadBalancer(awsDashboard, lbPolicy, awsInterface);
+        LoadBalancer loadBalancer = new LoadBalancer(awsDashboard, awsInterface);
         loadBalancer.start();
         System.out.println("LoadBalancer started on port 8000...");
 

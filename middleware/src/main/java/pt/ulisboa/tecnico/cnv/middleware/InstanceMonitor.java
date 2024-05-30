@@ -3,7 +3,7 @@ package pt.ulisboa.tecnico.cnv.middleware;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
-import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
+import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
 import pt.ulisboa.tecnico.cnv.webserver.WorkerMetric;
 import com.amazonaws.services.cloudwatch.model.Datapoint;
 import com.amazonaws.services.cloudwatch.model.Dimension;
@@ -68,7 +68,7 @@ public class InstanceMonitor implements Runnable {
             
             // update the metrics
             System.out.printf("Saving metrics for worker %s\n", worker.getId());
-            this.awsDashboard.updateMetrics(worker, new InstanceMetrics(metric, worker.getId(), cpuUsage));
+            this.awsDashboard.updateMetrics(worker, new AggregateWorkerMetrics(metric, worker.getId(), cpuUsage));
         }
     }
 

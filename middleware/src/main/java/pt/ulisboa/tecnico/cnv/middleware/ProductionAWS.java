@@ -45,7 +45,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
 
-
+/**
+ * Implementation of AWSInteface that actually interacts with AWS and creates
+ * AWS resources.
+ */
 public class ProductionAWS implements AWSInterface {
 
     private static final String AWS_REGION = System.getenv("AWS_REGION");
@@ -219,7 +222,6 @@ public class ProductionAWS implements AWSInterface {
                 .withEndTime(endTime)
                 .withStatistics("Average");
 
-        // FIXME: remove this orElse
         List<Datapoint> datapoints = this.cloudWatch.getMetricStatistics(request).getDatapoints();
 
         if (datapoints.size() == 0) {
@@ -243,7 +245,6 @@ public class ProductionAWS implements AWSInterface {
     }
 
     public Optional<Pair<String, Integer>> callLambda(String functionName, String jsonPayload) {
-        // FIXME - Change return type
         InvokeRequest invokeRequest = new InvokeRequest()
                 .withFunctionName(functionName)
                 .withPayload(jsonPayload);
@@ -254,8 +255,9 @@ public class ProductionAWS implements AWSInterface {
             String response = new String(result.getPayload().array(), StandardCharsets.UTF_8);
             return Optional.of(new Pair<>(response, statusCode));
         } catch (ServiceException e) {
-            System.err.println(e.getMessage());  // Handle exception better? logging?
-            return Optional.empty();
+            // TODO: improve error handling 
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 

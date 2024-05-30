@@ -1,5 +1,4 @@
 #! /usr/bin/env bash
 
-export PATH=$PATH:$(pwd)
-java -cp middleware-1.0.0-SNAPSHOT-jar-with-dependencies.jar pt.ulisboa.tecnico.cnv.middleware.WebServer &> /tmp/middleware.log &
-disown
+export PATH=$(pwd):$PATH
+java -cp target/middleware-1.0.0-SNAPSHOT-jar-with-dependencies.jar pt.ulisboa.tecnico.cnv.middleware.WebServer

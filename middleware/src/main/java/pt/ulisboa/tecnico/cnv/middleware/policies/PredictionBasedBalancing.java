@@ -9,7 +9,7 @@ import com.sun.net.httpserver.HttpExchange;
 import pt.ulisboa.tecnico.cnv.middleware.Job;
 import pt.ulisboa.tecnico.cnv.middleware.Worker;
 import pt.ulisboa.tecnico.cnv.middleware.estimator.Estimator;
-import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
+import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
 
 public class PredictionBasedBalancing implements LBPolicy {
     private Estimator estimator;
@@ -22,7 +22,7 @@ public class PredictionBasedBalancing implements LBPolicy {
         this.status = status;
     }
 
-    public Optional<Worker> choose(HttpExchange exchange, Map<Worker, Optional<InstanceMetrics>> metrics) {
+    public Optional<Worker> choose(HttpExchange exchange, Map<Worker, Optional<AggregateWorkerMetrics>> metrics) {
         long estimate = this.estimator.estimate(exchange);
         long lambdaPrediction = 500;
 

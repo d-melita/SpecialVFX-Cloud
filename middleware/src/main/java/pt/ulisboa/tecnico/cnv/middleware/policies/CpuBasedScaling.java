@@ -4,7 +4,7 @@ import com.amazonaws.services.ec2.model.Instance;
 
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 import pt.ulisboa.tecnico.cnv.middleware.Worker;
-import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
+import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.OptionalDouble;
 
 /**
  * Auto-scaling policy that changes replicas only based comparison of CPU
- * usage wit threshold
+ * usage with threshold.
  */
 public class CpuBasedScaling implements ASPolicy {
     private double lowThreshold;
@@ -25,7 +25,7 @@ public class CpuBasedScaling implements ASPolicy {
         this.highThreshold = highThreshold;
     }
 
-    public ScalingDecision evaluate(Map<Worker, Optional<InstanceMetrics>> metrics, int instances) {
+    public ScalingDecision evaluate(Map<Worker, Optional<AggregateWorkerMetrics>> metrics) {
         OptionalDouble averageOpt = metrics.entrySet().stream()
             .map(p -> p.getValue())
             .filter(p -> p.isPresent())
@@ -45,7 +45,7 @@ public class CpuBasedScaling implements ASPolicy {
                 return ScalingDecision.Increase;
             }
 
-            if (average < lowThreshold && instances > 1) {
+            if (average < lowThreshold && metrics.size() > 1) {
                 return ScalingDecision.Reduce;
             }
         } else {

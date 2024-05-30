@@ -16,8 +16,9 @@ import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
 import com. amazonaws. services. ec2.model. TerminateInstancesResult;
-import pt.ulisboa.tecnico.cnv.middleware.metrics.InstanceMetrics;
+import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
 import pt.ulisboa.tecnico.cnv.middleware.policies.ASPolicy;
+import pt.ulisboa.tecnico.cnv.middleware.policies.ScalingDecision;
 
 public class AutoScaler implements Runnable {
     private ASPolicy policy;
@@ -51,9 +52,9 @@ public class AutoScaler implements Runnable {
     }
 
     private void update() {
-        Map<Worker, Optional<InstanceMetrics>> metrics = this.awsDashboard.getMetrics();
+        Map<Worker, Optional<AggregateWorkerMetrics>> metrics = this.awsDashboard.getMetrics();
         Worker worker;
-        switch (policy.evaluate(metrics, this.awsDashboard.getMetrics().keySet().size())) {
+        switch (policy.evaluate(metrics)) {
             case Increase:
                 System.out.println("Decided to create a new instance");
                 worker = awsInterface.createInstance();
@@ -69,7 +70,6 @@ public class AutoScaler implements Runnable {
             default:
                 break;
         }
-
     }
 
     public void start() {
