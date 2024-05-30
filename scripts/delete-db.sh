@@ -10,3 +10,5 @@ echo "Waiting until table is deleted"
 aws dynamodb wait table-not-exists \
   --region $AWS_DEFAULT_REGION \
   --table-name $DYNAMO_DB_TABLE_NAME
+
+echo "Table deleted successfully"

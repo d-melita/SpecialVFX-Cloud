@@ -19,3 +19,5 @@ echo "Waiting until table is available"
 aws dynamodb wait table-exists \
   --region $AWS_DEFAULT_REGION \
   --table-name $DYNAMO_DB_TABLE_NAME
+
+echo "Table created successfully"
