@@ -1,0 +1,17 @@
+def handle:
+	read scene // constant time
+	draw 
+	- create image -> α wcols, wrows
+	- for every i in wcols wrows -> α wcols, wrows:
+		getPixel 
+			- getRay const
+				- const
+				- convertCoord const
+					- matrix multiply
+			- trace -> α light shapes and type
+				- findHit -> α shapes and type
+					- for each shape intersect (depends on shape type)
+				- maybe shade (if not simple, do 5 times)
+					- for each light -> α lights shapes type
+						- findHit shapes and type
+							- for each shape intersect

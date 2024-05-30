@@ -97,4 +97,40 @@ public class Camera {
         Vector v = matrix.times(new Vector(p.x, p.y, p.z));
         return v;
     }
+
+    public Point getEye() {
+        return eye;
+    }
+
+    public Vector getVx() {
+        return vx;
+    }
+
+    public Vector getVy() {
+        return vy;
+    }
+
+    public Vector getVz() {
+        return vz;
+    }
+
+    public double getWindowDistance() {
+        return windowDistance;
+    }
+
+    public double getWindowWidth() {
+        return windowWidth;
+    }
+
+    public double getWindowHeight() {
+        return windowHeight;
+    }
+
+    public double getRows() {
+        return rows;
+    }
+
+    public double getCols() {
+        return cols;
+    }
 }

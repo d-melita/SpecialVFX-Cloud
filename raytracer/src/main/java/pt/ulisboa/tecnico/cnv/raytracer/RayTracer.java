@@ -296,4 +296,59 @@ public class RayTracer {
     private static Point readPoint(Scanner scanner) {
         return new Point(scanner.nextDouble(), scanner.nextDouble(), scanner.nextDouble());
     }
+
+    public Camera getCamera() {
+        return camera;
+    }
+
+    // Getter for lights
+    public ArrayList<Light> getLights() {
+        return lights;
+    }
+
+    // Getter for pigments
+    public ArrayList<Pigment> getPigments() {
+        return pigments;
+    }
+
+    // Getter for finishes
+    public ArrayList<Finish> getFinishes() {
+        return finishes;
+    }
+
+    // Getter for shapes
+    public ArrayList<Shape> getShapes() {
+        return shapes;
+    }
+
+    // Getter for scols
+    public int getScols() {
+        return scols;
+    }
+
+    // Getter for srows
+    public int getSrows() {
+        return srows;
+    }
+
+    // Getter for wcols
+    public int getWcols() {
+        return wcols;
+    }
+
+    // Getter for wrows
+    public int getWrows() {
+        return wrows;
+    }
+
+    // Getter for coff
+    public int getCoff() {
+        return coff;
+    }
+
+    // Getter for roff
+    public int getRoff() {
+        return roff;
+    }
+
 }
