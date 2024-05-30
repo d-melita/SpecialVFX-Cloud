@@ -20,40 +20,47 @@ import java.util.HashMap;
 import java.util.Map;
 import java.io.InputStream;
 import java.io.InputStream;
+import pt.ulisboa.tecnico.cnv.common.Handler;
 
-public class RaytracerHandler implements HttpHandler, RequestHandler<Map<String, String>, String> {
+public class RaytracerHandler implements HttpHandler, RequestHandler<Map<String, String>, String>, Handler {
 
     private final static ObjectMapper mapper = new ObjectMapper();
     
-    public String actuallyHandle(URI requestedUri, InputStream stream) throws IOException {
-        String query = requestedUri.getRawQuery();
-        Map<String, String> parameters = queryToMap(query);
+    public String actuallyHandle(URI requestedUri, InputStream stream)  {
+        try {
+            String query = requestedUri.getRawQuery();
+            Map<String, String> parameters = queryToMap(query);
 
-        int scols = Integer.parseInt(parameters.get("scols"));
-        int srows = Integer.parseInt(parameters.get("srows"));
-        int wcols = Integer.parseInt(parameters.get("wcols"));
-        int wrows = Integer.parseInt(parameters.get("wrows"));
-        int coff = Integer.parseInt(parameters.get("coff"));
-        int roff = Integer.parseInt(parameters.get("roff"));
-        Main.ANTI_ALIAS = Boolean.parseBoolean(parameters.getOrDefault("aa", "false"));
-        Main.MULTI_THREAD = Boolean.parseBoolean(parameters.getOrDefault("multi", "false"));
+            int scols = Integer.parseInt(parameters.get("scols"));
+            int srows = Integer.parseInt(parameters.get("srows"));
+            int wcols = Integer.parseInt(parameters.get("wcols"));
+            int wrows = Integer.parseInt(parameters.get("wrows"));
+            int coff = Integer.parseInt(parameters.get("coff"));
+            int roff = Integer.parseInt(parameters.get("roff"));
+            Main.ANTI_ALIAS = Boolean.parseBoolean(parameters.getOrDefault("aa", "false"));
+            Main.MULTI_THREAD = Boolean.parseBoolean(parameters.getOrDefault("multi", "false"));
 
-        Map<String, Object> body = mapper.readValue(stream, new TypeReference<>() {});
+            Map<String, Object> body = mapper.readValue(stream, new TypeReference<>() {});
 
-        byte[] input = ((String) body.get("scene")).getBytes();
-        byte[] texmap = null;
-        if (body.containsKey("texmap")) {
-            // Convert ArrayList<Integer> to byte[]
-            ArrayList<Integer> texmapBytes = (ArrayList<Integer>) body.get("texmap");
-            texmap = new byte[texmapBytes.size()];
-            for (int i = 0; i < texmapBytes.size(); i++) {
-                texmap[i] = texmapBytes.get(i).byteValue();
+            byte[] input = ((String) body.get("scene")).getBytes();
+            byte[] texmap = null;
+            if (body.containsKey("texmap")) {
+                // Convert ArrayList<Integer> to byte[]
+                ArrayList<Integer> texmapBytes = (ArrayList<Integer>) body.get("texmap");
+                texmap = new byte[texmapBytes.size()];
+                for (int i = 0; i < texmapBytes.size(); i++) {
+                    texmap[i] = texmapBytes.get(i).byteValue();
+                }
             }
-        }
 
-        byte[] result = handleRequest(input, texmap, scols, srows, wcols, wrows, coff, roff);
-        String response = String.format("data:image/bmp;base64,%s", Base64.getEncoder().encodeToString(result));
-        return response;
+            byte[] result = handleRequest(input, texmap, scols, srows, wcols, wrows, coff, roff);
+            String response = String.format("data:image/bmp;base64,%s", Base64.getEncoder().encodeToString(result));
+
+            return response;
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

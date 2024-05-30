@@ -7,8 +7,9 @@ import boofcv.struct.image.GrayU8;
 import boofcv.struct.image.ImageType;
 import boofcv.struct.image.Planar;
 import java.awt.image.BufferedImage;
+import pt.ulisboa.tecnico.cnv.common.Handler;
 
-public class BlurImageHandler extends ImageProcessingHandler {
+public class BlurImageHandler extends ImageProcessingHandler implements Handler {
 
     public BufferedImage process(BufferedImage bi) {
         Planar<GrayU8> input = ConvertBufferedImage.convertFrom(bi, true, ImageType.pl(3, GrayU8.class));

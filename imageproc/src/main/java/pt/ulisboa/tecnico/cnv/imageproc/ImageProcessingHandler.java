@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.util.Base64;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.net.URI;
 
 import javax.imageio.ImageIO;
 
@@ -22,6 +23,18 @@ import com.sun.net.httpserver.HttpHandler;
 public abstract class ImageProcessingHandler implements HttpHandler, RequestHandler<Map<String,String>, String> {
 
     abstract BufferedImage process(BufferedImage bi) throws IOException;
+
+    public String actuallyHandle(URI requestedUri, InputStream stream)  {
+        String result = new BufferedReader(new InputStreamReader(stream)).lines().collect(Collectors.joining("\n"));
+        String[] resultSplits = result.split(",");
+        String format = resultSplits[0].split("/")[1].split(";")[0];
+
+        // Result syntax: data:image/<format>;base64,<encoded image>
+        String output = handleRequest(resultSplits[1], format);
+        output = String.format("data:image/%s;base64,%s", format, output);
+
+        return output;
+    }
 
     private String handleRequest(String inputEncoded, String format) {
         byte[] decoded = Base64.getDecoder().decode(inputEncoded);
@@ -50,14 +63,8 @@ public abstract class ImageProcessingHandler implements HttpHandler, RequestHand
         }
 
         InputStream stream = t.getRequestBody();
-        // Result syntax: data:image/<format>;base64,<encoded image>
-        String result = new BufferedReader(new InputStreamReader(stream)).lines().collect(Collectors.joining("\n"));
-        String[] resultSplits = result.split(",");
-        String format = resultSplits[0].split("/")[1].split(";")[0];
 
-        String output = handleRequest(resultSplits[1], format);
-        output = String.format("data:image/%s;base64,%s", format, output);
-
+        String output = this.actuallyHandle(null, stream);
         t.sendResponseHeaders(200, output.length());
         OutputStream os = t.getResponseBody();
         os.write(output.getBytes());

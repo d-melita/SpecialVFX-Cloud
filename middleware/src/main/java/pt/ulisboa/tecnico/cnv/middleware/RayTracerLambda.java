@@ -24,7 +24,7 @@ public class RayTracerLambda implements RequestHandler<Map<String, String>, Stri
             URI requestedUri = new URI(event.get("uri"));
             InputStream stream = new ByteArrayInputStream(Base64.getDecoder().decode(event.get("body")));
             return handler.actuallyHandle(requestedUri, stream);
-        } catch (IOException | URISyntaxException e) {
+        } catch (URISyntaxException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }

@@ -5,8 +5,9 @@ import boofcv.io.image.ConvertBufferedImage;
 import boofcv.io.image.UtilImageIO;
 import boofcv.struct.image.GrayU8;
 import java.awt.image.BufferedImage;
+import pt.ulisboa.tecnico.cnv.common.Handler;
 
-public class EnhanceImageHandler extends ImageProcessingHandler {
+public class EnhanceImageHandler extends ImageProcessingHandler implements Handler {
 
     public BufferedImage process(BufferedImage bi) {
         GrayU8 gray = ConvertBufferedImage.convertFrom(bi, (GrayU8)null);

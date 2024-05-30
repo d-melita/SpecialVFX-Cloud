@@ -3,7 +3,12 @@ package pt.ulisboa.tecnico.cnv.middleware;
 import com.amazonaws.services.ec2.model.Instance;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 import pt.ulisboa.tecnico.cnv.raytracer.RaytracerHandler;
+import pt.ulisboa.tecnico.cnv.imageproc.BlurImageHandler;
+import pt.ulisboa.tecnico.cnv.imageproc.EnhanceImageHandler;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
+import pt.ulisboa.tecnico.cnv.common.Handler;
+import java.util.Map;
+import java.util.HashMap;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
@@ -20,11 +25,23 @@ import org.json.simple.JSONValue;
 public class DummyAWS implements AWSInterface {
     private Stack<DummyWorker> workers;
     private Stack<Process> processes;
-    private RaytracerHandler raytracerHandler = new RaytracerHandler();
+    private Map<String, Handler> handlers;
 
     public DummyAWS() {
         this.processes = new Stack<>();
         this.workers = new Stack<>();
+        this.handlers = new HashMap<>();
+        this.initHandlers();
+    }
+
+    private void initHandlers() {
+        this.handlers.put("raytracer", new RaytracerHandler());
+        this.handlers.put("blurimage", new BlurImageHandler());
+        this.handlers.put("enhanceimage", new EnhanceImageHandler());
+    }
+
+    private Handler getHandlerFor(String name) {
+        return this.handlers.get(name);
     }
 
     public double getCpuUsage(Worker worker) {
@@ -64,13 +81,13 @@ public class DummyAWS implements AWSInterface {
 
     public Optional<Pair<String, Integer>> callLambda(String lambdaName, String json) {
         System.out.printf("lambda %s called with %s (%b)\n", lambdaName, json, lambdaName.equals("raytracer"));
-        if (lambdaName.equals("raytracer")) {
+        if (this.handlers.containsKey(lambdaName)) {
             // do similar to what lambda will do
             try {
                 JSONObject event = (JSONObject) JSONValue.parse(json);
                 URI requestedUri = new URI((String) event.get("uri"));
                 InputStream stream = new ByteArrayInputStream(Base64.getDecoder().decode((String) event.get("body")));
-                String response = this.raytracerHandler.actuallyHandle(requestedUri, stream);
+                String response = this.getHandlerFor(lambdaName).actuallyHandle(requestedUri, stream);
                 return Optional.of(new Pair<>(response, 200));
             } catch (Exception e) {
                 e.printStackTrace();
