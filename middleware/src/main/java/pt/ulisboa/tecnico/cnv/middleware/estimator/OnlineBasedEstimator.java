@@ -33,26 +33,17 @@ public class OnlineBasedEstimator implements Estimator {
     // denominator enhance
     private double denhance = 0.0;
 
+    // slope for raytracer
+    private double gamma = 0.0;
+
+    // nominator raytracer
+    private double nraytracer = 0.0;
+
+    // denominator raytracer
+    private double draytracer = 0.0;
+
     // update rate
     private double XI = 0.9;
-
-    // last K wcols
-    private ArrayList<Double> wcolsList = new ArrayList<>();
-
-    // last K wrows
-    private ArrayList<Double> wrowsList = new ArrayList<>();
-
-    // last K times for raytracer
-    private ArrayList<Double> raytimes = new ArrayList<>();
-    
-    // coeficient for wcols
-    private double gama1 = 0.0;
-
-    // coeficient for wrows
-    private double gama2 = 0.0;
-
-    // number of records stored for raytracer multi-linear regression
-    private int K = 100;
 
     public OnlineBasedEstimator() {
     }
@@ -75,8 +66,9 @@ public class OnlineBasedEstimator implements Estimator {
         Map<String, String> parameters = queryToMap(query);
         int wcols = Integer.parseInt(parameters.get("wcols"));
         int wrows = Integer.parseInt(parameters.get("wrows"));
+        int area = wcols * wrows;
 
-        double estimate = wcols * gama1 + wrows * gama2;
+        long estimate = (long) (this.gamma * area);
         System.out.println("Estimating RayTracer with wcols: " + wcols + ", wrows: " + wrows + " -> estimate: " + estimate);
         return (long) estimate;
     }
@@ -97,29 +89,6 @@ public class OnlineBasedEstimator implements Estimator {
         System.out.println("Updating Enhance: BodySize = " + bodySize + ", Time = " + time + ", NEnhance = " + nenhance + ", DEnhance = " + denhance + ", Beta = " + beta);
     }
 
-    public void updateGamas() {
-        // let X = [ wrows wcols ], Y = [ raytimes ].
-        // Compute (X^T * X)^-1 * X^T * Y
-    
-        // K by 2
-        double[][] X = { this.wcolsList.stream().mapToDouble(Double::doubleValue).toArray(),
-                         this.wrowsList.stream().mapToDouble(Double::doubleValue).toArray() };
-
-        // K by 1
-        double[][] Y = { this.raytimes.stream().mapToDouble(Double::doubleValue).toArray() };
-
-        double[][] gamas = 
-            multiply(
-                    multiply(
-                        inverse(multiply(transpose(X), X)),
-                                transpose(X)),
-                    Y);
-
-        this.gama1 = gamas[0][0];
-        this.gama2 = gamas[0][1];
-        System.out.printf("gamas updated: gama1=%f, gama2=%f\n", gama1, gama2);
-    }
-
     public void updateRayTracer(HttpExchange exchange, long time) {
         try {
             URI requestedUri = exchange.getRequestURI();
@@ -127,27 +96,15 @@ public class OnlineBasedEstimator implements Estimator {
             Map<String, String> parameters = queryToMap(query);
             int wcols = Integer.parseInt(parameters.get("wcols"));
             int wrows = Integer.parseInt(parameters.get("wrows"));
-
-            // add one, keep size up to K
-            wcolsList.add((double) wcols);
-            wrowsList.add((double) wrows);
-            raytimes.add((double) time);
-            System.out.printf("Updated lists: wcols=%d, wrows=%d, time=%d\n", wcols, wrows, time);
-
-            if (wcolsList.size() > this.K) {
-                this.wcolsList = (ArrayList<Double>) wcolsList.subList(1, this.K+1);
-                this.wrowsList = (ArrayList<Double>) wrowsList.subList(1, this.K+1);
-                this.raytimes = (ArrayList<Double>) raytimes.subList(1, this.K+1);
-            }
-
-            // TODO : to avoid overload, don't update all the time
-            updateGamas();
+            long area = wcols * wrows;
+            this.nraytracer = this.nraytracer * XI + (1 - XI) * (((double) time) * ((double) area));
+            this.draytracer = this.draytracer * XI + (1 - XI) * (((double) area) * ((double) area));
+            this.gamma = this.nraytracer / this.draytracer;
+            System.out.println("Updating RayTracer: Area = " + area + ", Time = " + time + ", NRaytracer = " + nraytracer + ", DRaytracer = " + draytracer + ", Gamma = " + gamma);
         } catch (Exception e) {
             e.printStackTrace();
             throw e;
         }
-
-        System.out.println("Updating RayTracer: No implementation");
     }
 
     public long estimate(HttpExchange exchange) {
@@ -195,7 +152,10 @@ public class OnlineBasedEstimator implements Estimator {
     public static double[][] multiply(double[][] firstMatrix, double[][] secondMatrix) {
         int firstRows = firstMatrix.length;
         int firstCols = firstMatrix[0].length;
+        int secondRows = secondMatrix.length;
         int secondCols = secondMatrix[0].length;
+
+        System.out.printf("multipling A (%d x %d) by B (%d x %d)\n", firstRows, firstCols, secondRows, secondCols);
 
         double[][] product = new double[firstRows][secondCols];
 

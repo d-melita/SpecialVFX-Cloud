@@ -1,3 +1,4 @@
+from itertools import product
 import random
 
 def gen_image_proc_script(t):
@@ -228,7 +229,6 @@ textures = [
 FILE = "raytracer.json"
 reps = 10
 
-
 def try_spheres():
     sphere_counts = list(range(1, 30))
     sphere_counts = sphere_counts * reps # to spread repetitions
@@ -267,6 +267,18 @@ def try_width():
         gen_ray_tracer_script(3, {"sphere": 5}, f"scene-{len(widths)-1}.txt", fh, widths[-1], 300)
         fh.write("]")
 
+def try_width_height():
+    sizes = list(product(list(range(100, 1000, 200)), list(range(100, 1000, 200))))
+    sizes = sizes * reps # to spread repetitions
+    with open(FILE, "w") as fh:
+        fh.write("[")
+        for i, (width, height) in enumerate(sizes[:-1]):
+            gen_ray_tracer_script(3, {"sphere": 5}, f"scene-{i}.txt", fh, width, height)
+            fh.write(",")
+
+        gen_ray_tracer_script(3, {"sphere": 5}, f"scene-{len(sizes)-1}.txt", fh, sizes[-1][0], sizes[-1][1])
+        fh.write("]")
+
 def try_height():
     heights = list(range(100, 1100, 100))
     heights = heights * reps # to spread repetitions
@@ -282,5 +294,5 @@ def try_height():
 def try_shape():
     pass
 
-gen_image_proc_script("blur")
-# try_height()
+# gen_image_proc_script("blur")
+try_width_height()
