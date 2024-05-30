@@ -5,7 +5,7 @@
 
 echo "Creating the table"
 aws dynamodb create-table \
-  --region $AWS_DEFAULT_REGION \
+  --region $AWS_REGION \
   --table-name $DYNAMO_DB_TABLE_NAME \
   --attribute-definition \
     AttributeName=RequestParams,AttributeType=S \
@@ -17,7 +17,7 @@ aws dynamodb create-table \
 
 echo "Waiting until table is available"
 aws dynamodb wait table-exists \
-  --region $AWS_DEFAULT_REGION \
+  --region $AWS_REGION \
   --table-name $DYNAMO_DB_TABLE_NAME
 
 echo "Table created successfully"
