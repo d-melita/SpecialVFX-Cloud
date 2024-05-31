@@ -8,6 +8,7 @@ import com.sun.net.httpserver.HttpServer;
 import pt.ulisboa.tecnico.cnv.middleware.policies.ASPolicy;
 import pt.ulisboa.tecnico.cnv.middleware.policies.LBPolicy;
 import pt.ulisboa.tecnico.cnv.middleware.policies.CpuBasedScaling;
+import pt.ulisboa.tecnico.cnv.middleware.policies.TimeInstRatioBasedScaling;
 import pt.ulisboa.tecnico.cnv.middleware.policies.CpuBasedBalancing;
 
 
@@ -21,7 +22,8 @@ public class WebServer {
         AWSDashboard awsDashboard = new AWSDashboard();
         AWSInterface awsInterface;
 
-        ASPolicy asPolicy = new CpuBasedScaling(25, 75);
+        // ASPolicy asPolicy = new CpuBasedScaling(25, 75);
+        ASPolicy asPolicy = new TimeInstRatioBasedScaling(25, 75);
 
         if (PRODUCTION) {
             awsInterface = new ProductionAWS(awsDashboard);

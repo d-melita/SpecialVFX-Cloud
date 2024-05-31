@@ -27,7 +27,7 @@ public class AutoScaler implements Runnable {
     private Thread daemon;
     private AWSInterface awsInterface;
 
-    private static final int TIMER = 15000; // 15 seconds
+    private static final int TIMER = 4000; // 4 seconds
 
     public AutoScaler(AWSDashboard awsDashboard, ASPolicy policy, AWSInterface awsInterface) {
         this.awsDashboard = awsDashboard;
