@@ -12,6 +12,8 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.net.URI;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.imageio.ImageIO;
 

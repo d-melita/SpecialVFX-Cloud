@@ -5,6 +5,8 @@ import com.amazonaws.services.dynamodbv2.model.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
@@ -26,9 +28,8 @@ public class DynamoWriterProduction implements DynamoWriter {
                 .withCredentials(new EnvironmentVariableCredentialsProvider()).build();
     }
 
-    @Override
-    public void pushMetric(WorkerMetric metric) {
-        // TODO - check if correct
+    private void pushSingleMetric(WorkerMetric metric) {
+        // TODO - fix
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("RequestParams", new AttributeValue().withS(metric.getUri()));
         item.put("RawData", new AttributeValue().withM(metric.getRawData().entrySet().stream()
@@ -37,6 +38,13 @@ public class DynamoWriterProduction implements DynamoWriter {
 
         PutItemRequest putItemRequest = new PutItemRequest(DYNAMO_DB_TABLE_NAME, item);
         dynamoDB.putItem(putItemRequest);
+    }
+
+    @Override
+    public void pushMetrics(List<WorkerMetric> metrics) {
+        for (WorkerMetric metric: metrics) {
+            this.pushSingleMetric(metric);
+        }
     }
 
     /*

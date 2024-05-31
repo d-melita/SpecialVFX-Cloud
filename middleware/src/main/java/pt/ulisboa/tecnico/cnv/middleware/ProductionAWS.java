@@ -28,7 +28,7 @@ import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
-import pt.ulisboa.tecnico.cnv.webserver.WorkerMetric;
+import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
 import com.amazonaws.services.cloudwatch.model.Datapoint;
 import com.amazonaws.services.cloudwatch.model.Dimension;
 import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
@@ -47,6 +47,7 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.OptionalDouble;
 
@@ -223,5 +224,8 @@ public class ProductionAWS implements AWSInterface {
         }
     }
 
-    /* TODO - read from dynamoDB and update values */
+    public List<WorkerMetric> getMetricsForSince(Worker w, long since) {
+        // TODO
+        return new ArrayList<>();
+    }
 }

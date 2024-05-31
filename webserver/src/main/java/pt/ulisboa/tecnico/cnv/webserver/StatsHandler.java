@@ -10,6 +10,7 @@ import java.net.URI;
 import java.util.concurrent.BlockingQueue;
 import java.io.ObjectOutputStream;
 
+import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
 
 public class StatsHandler implements HttpHandler {
 

@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.io.InputStream;
 import java.io.InputStream;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import pt.ulisboa.tecnico.cnv.common.Handler;
 
 public class RaytracerHandler implements HttpHandler, RequestHandler<Map<String, String>, String>, Handler {

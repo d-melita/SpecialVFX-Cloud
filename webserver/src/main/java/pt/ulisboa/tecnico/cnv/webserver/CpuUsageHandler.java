@@ -11,12 +11,16 @@ import java.util.concurrent.BlockingQueue;
 import java.io.ObjectOutputStream;
 import com.sun.management.OperatingSystemMXBean;
 import java.lang.management.ManagementFactory;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class CpuUsageHandler implements HttpHandler {
 
     OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
+    AtomicReference<Optional<String>> idOpt;
 
-    public CpuUsageHandler() {
+    public CpuUsageHandler(AtomicReference<Optional<String>> idOpt) {
+        this.idOpt = idOpt;
     }
 
     @Override
@@ -32,6 +36,10 @@ public class CpuUsageHandler implements HttpHandler {
         }
 
         URI requestedUri = he.getRequestURI();
+        String myId = requestedUri.toString().split("\\?")[1].split("=")[1];
+        System.out.printf("I think my id is %s\n", myId);
+        idOpt.set(Optional.of(myId));
+
 
         double cpuLoad = osBean.getSystemCpuLoad();
         double cpuLoadPercentage = cpuLoad * 100;

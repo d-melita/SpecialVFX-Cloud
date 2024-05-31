@@ -4,7 +4,7 @@ import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
 import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
-import pt.ulisboa.tecnico.cnv.webserver.WorkerMetric;
+import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
 import com.amazonaws.services.cloudwatch.model.Datapoint;
 import com.amazonaws.services.cloudwatch.model.Dimension;
 import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
@@ -18,6 +18,8 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 
 public class InstanceMonitor implements Runnable {
@@ -37,17 +39,21 @@ public class InstanceMonitor implements Runnable {
     private static long OBS_TIME = 1000 * 60 * 20;
 
     // Time between each query for instance state
-    private static long QUERY_COOLDOWN = 1000 * 30; // 30 seconds
+    private static long QUERY_COOLDOWN = 1000 * 5; // 30 seconds
 
     private static final int PORT = 8000;
 
     private Thread daemon;
+
+    // Maps worker id to last read metric
+    private Map<String, Long> lastRead = new HashMap<>();
 
     public InstanceMonitor(AWSDashboard awsDashboard, AWSInterface awsInterface){
         this.awsDashboard = awsDashboard;
         this.awsInterface = awsInterface;
     }
 
+    // FIXME: get cpu usage works as a keep alive
     public double getCpuUsage(Worker worker) {
         try {
             // get cpu usage of an instance
@@ -56,7 +62,7 @@ public class InstanceMonitor implements Runnable {
 
             System.out.printf("Requesting CPU usage from %s\n", instanceId);
 
-            String urlStr = "http://" + worker.getIP() + ":" + worker.getPort() + "/cpuUsage";
+            String urlStr = "http://" + worker.getIP() + ":" + worker.getPort() + "/cpuUsage?id=" + worker.getId();
             System.out.printf("Trying to get cpu usage from %s\n", urlStr);
             URL url = new URL(urlStr);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
@@ -105,22 +111,39 @@ public class InstanceMonitor implements Runnable {
         }
     }
 
+    /*
+     **/
     public List<WorkerMetric> getMetric(Worker worker) throws IOException, ClassNotFoundException {
 
-        String urlStr = "http://" + worker.getIP() + ":" + worker.getPort() + "/stats";
-        System.out.printf("Trying to get metric from %s\n", urlStr);
-        URL url = new URL(urlStr);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("GET");
+        long since = this.lastRead.getOrDefault(worker.getId(), -1L) + 1;
+        List<WorkerMetric> metrics = this.awsInterface.getMetricsForSince(worker, since);
 
-        ObjectInputStream in = new ObjectInputStream(con.getInputStream());
+        if (metrics.size() == 0) {
+            return metrics;
+        }
 
-        List<WorkerMetric> metrics = (List<WorkerMetric>) in.readObject();
+        long newSince = metrics.stream().mapToLong(m -> m.getSeq()).max().getAsLong();
+        this.lastRead.put(worker.getId(), newSince);
 
-        in.close();
-        con.disconnect();
         return metrics;
     }
+
+    // public List<WorkerMetric> getMetric(Worker worker) throws IOException, ClassNotFoundException {
+    //
+    //     String urlStr = "http://" + worker.getIP() + ":" + worker.getPort() + "/stats";
+    //     System.out.printf("Trying to get metric from %s\n", urlStr);
+    //     URL url = new URL(urlStr);
+    //     HttpURLConnection con = (HttpURLConnection) url.openConnection();
+    //     con.setRequestMethod("GET");
+    //
+    //     ObjectInputStream in = new ObjectInputStream(con.getInputStream());
+    //
+    //     List<WorkerMetric> metrics = (List<WorkerMetric>) in.readObject();
+    //
+    //     in.close();
+    //     con.disconnect();
+    //     return metrics;
+    // }
 
     public void start() {
         this.daemon = new Thread(this);
@@ -134,6 +157,7 @@ public class InstanceMonitor implements Runnable {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+
             try {
                 this.update();
             } catch (IOException e) {

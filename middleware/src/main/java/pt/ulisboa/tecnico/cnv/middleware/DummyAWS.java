@@ -7,8 +7,11 @@ import pt.ulisboa.tecnico.cnv.imageproc.BlurImageHandler;
 import pt.ulisboa.tecnico.cnv.imageproc.EnhanceImageHandler;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 import pt.ulisboa.tecnico.cnv.common.Handler;
+import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
@@ -19,6 +22,9 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Stack;
 import java.util.Base64;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
+import java.io.EOFException;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
@@ -87,6 +93,30 @@ public class DummyAWS implements AWSInterface {
             }
         } else {
             throw new RuntimeException(String.format("no lambda called %s found\n", lambdaName));
+        }
+    }
+
+    public List<WorkerMetric> getMetricsForSince(Worker w, long since) {
+        String wid = w.getId();
+        String filename = String.format("/tmp/dynamoDummy-%s.dsa", w.getPort());
+        try (FileInputStream fis = new FileInputStream(filename)) {
+            ObjectInputStream ois = new ObjectInputStream(fis);
+
+            List<WorkerMetric> metrics = new ArrayList<>();
+            while (true) {
+                try {
+                    WorkerMetric metric = (WorkerMetric) ois.readObject();
+                    if (metric.getSeq() >= since) {
+                        metrics.add((WorkerMetric) ois.readObject());
+                    }
+                } catch (EOFException e) {
+                    break;
+                }
+            }
+            return metrics;
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }

@@ -15,6 +15,10 @@ import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
@@ -26,6 +30,7 @@ import pt.ulisboa.tecnico.cnv.imageproc.EnhanceImageHandler;
 import pt.ulisboa.tecnico.cnv.raytracer.RaytracerHandler;
 import pt.ulisboa.tecnico.cnv.raytracer.Camera;
 import pt.ulisboa.tecnico.cnv.raytracer.RayTracer;
+import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
 
 import pt.ulisboa.tecnico.cnv.javassist.tools.VFXMetrics;
 
@@ -45,9 +50,11 @@ public class WebServer {
      */
     private static class WrapperHandler implements HttpHandler {
         HttpHandler handler;
+        AtomicReference<Optional<String>> idOpt;
 
-        public WrapperHandler(HttpHandler handler) {
+        public WrapperHandler(AtomicReference<Optional<String>> idOpt, HttpHandler handler) {
             this.handler = handler;
+            this.idOpt = idOpt;
         }
 
         public void handle(HttpExchange exchange) throws IOException {
@@ -60,18 +67,23 @@ public class WebServer {
 
             Map<String, Long> rawStats = VFXMetrics.getStats();
 
-            // get body sizevamos la ver se
+            // get body size
             long bodySize = Long.parseLong(exchange.getRequestHeaders().getFirst("Content-Length"));
 
-            // enrich raw stats with context
-            WorkerMetric metric = new WorkerMetric(exchange.getRequestURI().toString(), new HashMap<>(), rawStats, Instant.now(), bodySize, endTime-startTime);
+            if (idOpt.get().isPresent()) {
+                String wid = idOpt.get().get();
+                // enrich raw stats with context
+                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), new HashMap<>(), rawStats, Instant.now(), bodySize, endTime-startTime);
 
-            try {
-                pendingStats.put(metric);
-                System.out.printf("request done - %s\n", metric.toString());
-            } catch (InterruptedException e) {
-                // TODO: check if I don't want to die
-                e.printStackTrace();
+                try {
+                    pendingStats.put(metric);
+                    System.out.printf("request done - %s\n", metric.toString());
+                } catch (InterruptedException e) {
+                    // TODO: check if I don't want to die
+                    e.printStackTrace();
+                }
+            } else {
+                System.out.printf("droped metric because don't yet know my id\n");
             }
         }
     }
@@ -82,9 +94,11 @@ public class WebServer {
      */
     private static class ImageProcWrapperHandler implements HttpHandler {
         HttpHandler handler;
+        AtomicReference<Optional<String>> idOpt;
 
-        public ImageProcWrapperHandler(HttpHandler handler) {
+        public ImageProcWrapperHandler(AtomicReference<Optional<String>> idOpt, HttpHandler handler) {
             this.handler = handler;
+            this.idOpt = idOpt;
         }
 
         public void handle(HttpExchange exchange) throws IOException {
@@ -100,15 +114,21 @@ public class WebServer {
             // get body sizevamos la ver se
             long bodySize = Long.parseLong(exchange.getRequestHeaders().getFirst("Content-Length"));
 
-            // enrich raw stats with context
-            WorkerMetric metric = new WorkerMetric(exchange.getRequestURI().toString(), new HashMap<>(), rawStats, Instant.now(), bodySize, endTime-startTime);
+            if (idOpt.get().isPresent()) {
+                String wid = idOpt.get().get();
 
-            try {
-                pendingStats.put(metric);
-                System.out.printf("request done - %s\n", metric.toString());
-            } catch (InterruptedException e) {
-                // TODO: check if I don't want to die
-                e.printStackTrace();
+                // enrich raw stats with context
+                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), new HashMap<>(), rawStats, Instant.now(), bodySize, endTime-startTime);
+
+                try {
+                    pendingStats.put(metric);
+                    System.out.printf("request done - %s\n", metric.toString());
+                } catch (InterruptedException e) {
+                    // TODO: check if I don't want to die
+                    e.printStackTrace();
+                }
+            } else {
+                System.out.printf("droped metric because don't yet know my id\n");
             }
         }
     }
@@ -119,9 +139,11 @@ public class WebServer {
      */
     private static class RayTracerWrapperHandler implements HttpHandler {
         HttpHandler handler;
+        AtomicReference<Optional<String>> idOpt;
 
-        public RayTracerWrapperHandler(HttpHandler handler) {
+        public RayTracerWrapperHandler(AtomicReference<Optional<String>> idOpt, HttpHandler handler) {
             this.handler = handler;
+            this.idOpt = idOpt;
         }
 
 
@@ -205,15 +227,21 @@ public class WebServer {
             // get body size
             long bodySize = Long.parseLong(exchange.getRequestHeaders().getFirst("Content-Length"));
 
-            // enrich raw stats with context
-            WorkerMetric metric = new WorkerMetric(exchange.getRequestURI().toString(), parameters, rawStats, Instant.now(), bodySize, endTime-startTime);
+            if (idOpt.get().isPresent()) {
+                String wid = idOpt.get().get();
 
-            try {
-                pendingStats.put(metric);
-                System.out.printf("request done - %s\n", metric.toString());
-            } catch (InterruptedException e) {
-                // TODO: check if I don't want to die
-                e.printStackTrace();
+                // enrich raw stats with context
+                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), parameters, rawStats, Instant.now(), bodySize, endTime-startTime);
+
+                try {
+                    pendingStats.put(metric);
+                    System.out.printf("request done - %s\n", metric.toString());
+                } catch (InterruptedException e) {
+                    // TODO: check if I don't want to die
+                    e.printStackTrace();
+                }
+            } else {
+                System.out.printf("droped metric because don't yet know my id\n");
             }
         }
     }
@@ -221,33 +249,8 @@ public class WebServer {
     /**
      * Pushes metrics to shared storage/file/makes it available for the AS/LB.
      */
-    /*
-    private static void pushMetric(WorkerMetric metric) {
-        pushMetricToFile(metric);
-        pushMetricToService(metric);
-    }
-
-    private static void pushMetricToDynamo(WorkerMetric metric) {
-        // TODO
-    }
-
-    private static void pushMetricToService(WorkerMetric metric) {
-        try {
-            statsServiceQueue.put(metric);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /*private static void pushMetricToFile(WorkerMetric metric) {
-        try (ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(outFile))) {
-            outputStream.writeObject(metric);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }*/
-
     private static void handleWrites() {
+        List<WorkerMetric> metrics;
         try {
             try (FileWriter writer = new FileWriter(outFile)) {
                 Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -260,10 +263,17 @@ public class WebServer {
                     }
                 });
                 while (true) {
-                    WorkerMetric metric = pendingStats.take();
-                    System.out.println("writing out something");
-                    writer.write(metric.toCsv() + "\n");
-                    dynamoWriter.pushMetric(metric);
+                    metrics = new ArrayList<>();
+                    // block until there's one
+                    metrics.add(pendingStats.take()); 
+                    pendingStats.drainTo(metrics); 
+
+                    dynamoWriter.pushMetrics(metrics);
+
+                    for (WorkerMetric metric: metrics) {
+                        System.out.println("writing out something");
+                        writer.write(metric.toCsv() + "\n");
+                    }
                 }
             } catch (InterruptedException e) {
                 // TODO: check if I don't want to die
@@ -299,17 +309,17 @@ public class WebServer {
         if (DYNAMO_PRODUCTION) {
             dynamoWriter = new DynamoWriterProduction();
         } else {
-            dynamoWriter = new DynamoWriterDummy();
+            dynamoWriter = new DynamoWriterDummy(String.valueOf(port));
         }
 
+        AtomicReference<Optional<String>> idOpt = new AtomicReference(Optional.empty());
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
-        server.createContext("/", new WrapperHandler(new RootHandler()));
-        server.createContext("/stats", new StatsHandler(statsServiceQueue));
-        server.createContext("/cpu", new CpuUsageHandler());
-        server.createContext("/raytracer", new RayTracerWrapperHandler(new RaytracerHandler()));
-        server.createContext("/blurimage", new ImageProcWrapperHandler(new BlurImageHandler()));
-        server.createContext("/enhanceimage", new ImageProcWrapperHandler(new EnhanceImageHandler()));
+        server.createContext("/", new WrapperHandler(idOpt, new RootHandler()));
+        server.createContext("/cpu", new CpuUsageHandler(idOpt));
+        server.createContext("/raytracer", new RayTracerWrapperHandler(idOpt, new RaytracerHandler()));
+        server.createContext("/blurimage", new ImageProcWrapperHandler(idOpt, new BlurImageHandler()));
+        server.createContext("/enhanceimage", new ImageProcWrapperHandler(idOpt, new EnhanceImageHandler()));
         setupLogger();
         server.start();
     }

@@ -1,6 +1,6 @@
 package pt.ulisboa.tecnico.cnv.middleware.metrics;
 
-import pt.ulisboa.tecnico.cnv.webserver.WorkerMetric;
+import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
 
 import java.util.List;
 
