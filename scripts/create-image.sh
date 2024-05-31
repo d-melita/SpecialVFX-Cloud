@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source config.sh
+source ./config.sh
 
 # launch a vm instance
 $DIR/launch-vm.sh || exit 1

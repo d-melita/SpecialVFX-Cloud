@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-source config.sh
+source ./config.sh
 
 echo "Launching Load Balancer and Auto Scaler..."
 

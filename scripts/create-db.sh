@@ -14,7 +14,7 @@ aws dynamodb create-table \
     AttributeName=ReplicaID,KeyType=HASH \
     AttributeName=SeqNb,KeyType=RANGE \
   --provisioned-throughput \
-    ReadCapacityUnits=1,WriteCapacityUnits=10 \
+    ReadCapacityUnits=5,WriteCapacityUnits=1000 \
   --table-class STANDARD 2>&1 | jq .
 
 echo "Waiting until table is available"
