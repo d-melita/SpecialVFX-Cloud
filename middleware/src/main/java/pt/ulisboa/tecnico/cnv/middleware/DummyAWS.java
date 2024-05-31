@@ -44,14 +44,6 @@ public class DummyAWS implements AWSInterface {
         return this.handlers.get(name);
     }
 
-    public double getCpuUsage(Worker worker) {
-        if (worker instanceof DummyWorker) {
-            return new Random().nextDouble() * 100;
-        }
-
-        throw new RuntimeException("DummyAWS can only be used with dummy workers");
-    }
-
     public Worker createInstance() {
         int id = this.processes.size();
         int port = 9000 + id;

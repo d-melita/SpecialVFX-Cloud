@@ -35,7 +35,7 @@ public class WebServer {
     private static String outFile = "/tmp/randomFileForLogs.dsa";
     private static BlockingQueue<WorkerMetric> pendingStats = new LinkedBlockingQueue<>();
     private static BlockingQueue<WorkerMetric> statsServiceQueue = new LinkedBlockingQueue<>();
-    private static boolean DYNAMO_PRODUCTION = true;
+    private static boolean DYNAMO_PRODUCTION = false;
 
     private static DynamoWriter dynamoWriter;
 
@@ -306,6 +306,7 @@ public class WebServer {
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.createContext("/", new WrapperHandler(new RootHandler()));
         server.createContext("/stats", new StatsHandler(statsServiceQueue));
+        server.createContext("/cpu", new CpuUsageHandler());
         server.createContext("/raytracer", new RayTracerWrapperHandler(new RaytracerHandler()));
         server.createContext("/blurimage", new ImageProcWrapperHandler(new BlurImageHandler()));
         server.createContext("/enhanceimage", new ImageProcWrapperHandler(new EnhanceImageHandler()));

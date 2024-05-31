@@ -10,11 +10,6 @@ import java.util.Optional;
  */
 public interface AWSInterface {
     /*
-     * Get cpu usage for a worker.
-     **/
-    public double getCpuUsage(Worker worker);
-
-    /*
      * Terminate an instance execution.
      **/
     public Worker forceTerminateInstance();

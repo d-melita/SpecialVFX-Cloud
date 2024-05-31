@@ -24,7 +24,6 @@ public class DynamoWriterProduction implements DynamoWriter {
 
         this.dynamoDB = AmazonDynamoDBAsyncClientBuilder.standard().withRegion(AWS_REGION)
                 .withCredentials(new EnvironmentVariableCredentialsProvider()).build();
-        this.createTable();
     }
 
     @Override
@@ -38,28 +37,6 @@ public class DynamoWriterProduction implements DynamoWriter {
 
         PutItemRequest putItemRequest = new PutItemRequest(DYNAMO_DB_TABLE_NAME, item);
         dynamoDB.putItem(putItemRequest);
-    }
-
-    public void createTable() {
-        // Create a table with a primary hash key named 'name', which holds a string
-        CreateTableRequest createTableRequest = new CreateTableRequest()
-                .withTableName(DYNAMO_DB_TABLE_NAME)
-                .withAttributeDefinitions(
-                        new AttributeDefinition().withAttributeName("RequestParams").withAttributeType("S"))
-                .withKeySchema(new KeySchemaElement().withAttributeName("RequestParams").withKeyType("HASH"))
-                .withProvisionedThroughput(
-                        new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L))
-                .withTableName("STANDARD");
-
-        // Create table if it does not exist yet
-        TableUtils.createTableIfNotExists(dynamoDB, createTableRequest);
-
-        try {
-            // wait for the table to move into ACTIVE state
-            TableUtils.waitUntilActive(dynamoDB, DYNAMO_DB_TABLE_NAME);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
     }
 
     /*

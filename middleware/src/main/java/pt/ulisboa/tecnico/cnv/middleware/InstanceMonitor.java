@@ -48,13 +48,46 @@ public class InstanceMonitor implements Runnable {
         this.awsInterface = awsInterface;
     }
 
+    public double getCpuUsage(Worker worker) {
+        try {
+            // get cpu usage of an instance
+            // get the instance id
+            String instanceId = worker.getId();
+
+            System.out.printf("Requesting CPU usage from %s\n", instanceId);
+
+            String urlStr = "http://" + worker.getIP() + ":" + worker.getPort() + "/cpuUsage";
+            System.out.printf("Trying to get cpu usage from %s\n", urlStr);
+            URL url = new URL(urlStr);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+
+            ObjectInputStream in = new ObjectInputStream(con.getInputStream());
+
+            double cpuUsage = in.readDouble();
+
+            System.out.printf("Got CPU usage from %s - is %f\n", instanceId, cpuUsage);
+
+            in.close();
+            con.disconnect();
+
+            System.out.printf("The average CPU usage computed for the last minute for %s is %f\n",
+                    instanceId, cpuUsage);
+
+            return cpuUsage;
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
     private void update() throws IOException, ClassNotFoundException {
         System.out.printf("Updating metrics on replicas (there are %d)\n", awsDashboard.getMetrics().size());
         for(Worker worker : this.awsDashboard.getMetrics().keySet()) {
             System.out.printf("Looking at worker with id %s\n", worker.getId());
 
             System.out.printf("Getting CPU usage for worker %s\n", worker.getId());
-            double cpuUsage = awsInterface.getCpuUsage(worker);
+            double cpuUsage = this.getCpuUsage(worker);
             System.out.printf("CPU usage for worker %s is %f\n", worker.getId(), cpuUsage);
 
             // get metrics from workers

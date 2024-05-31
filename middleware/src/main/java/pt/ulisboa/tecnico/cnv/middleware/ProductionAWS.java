@@ -38,7 +38,12 @@ import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.lambda.model.InvokeResult;
 import com.amazonaws.services.lambda.model.ServiceException;
+import com.amazonaws.services.lambda.AWSLambda;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.net.URL;
+import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
@@ -65,7 +70,6 @@ public class ProductionAWS implements AWSInterface {
     private static long QUERY_COOLDOWN = 1000 * 30; // 30 seconds
 
     private AmazonEC2 ec2;
-    private AmazonCloudWatch cloudWatch;
     private AWSLambda lambdaClient;
     private AmazonDynamoDB dynamoDB;
 
@@ -88,13 +92,6 @@ public class ProductionAWS implements AWSInterface {
 
         System.out.println("Done creating ec2 client instance");
 
-        System.out.println("Trying to create cloud watch client instance...");
-
-        this.cloudWatch = AmazonCloudWatchClientBuilder.standard()
-                .withCredentials(new EnvironmentVariableCredentialsProvider())
-                .withRegion(AWS_REGION)
-                .build();
-
         this.lambdaClient = AWSLambdaClientBuilder.standard()
                 .withCredentials(new EnvironmentVariableCredentialsProvider())
                 .withRegion(AWS_REGION)
@@ -105,8 +102,6 @@ public class ProductionAWS implements AWSInterface {
 
         this.createTableIfNotExists();
 
-
-        System.out.println("Done creating cloud watch client instance");
     }
 
     public Worker createInstance() {
@@ -179,69 +174,6 @@ public class ProductionAWS implements AWSInterface {
             throw new RuntimeException("Failed to terminate instance.");
         }
         return worker;
-    }
-
-    public double getCpuUsage(Worker abstractWorker) {
-        if (abstractWorker instanceof DummyWorker) {
-            throw new RuntimeException("Production AWS can only be used with production workers");
-        }
-
-        ProductionWorker worker = (ProductionWorker) abstractWorker;
-        Instance instance = worker.getInstance();
-
-        // get cpu usage of an instance
-        // get the instance id
-        String instanceId = instance.getInstanceId();
-
-        System.out.printf("Using cloud watch to find CPU usage for %s\n", instanceId);
-
-        // get the instance type
-        String instanceType = instance.getInstanceType();
-
-        // Calculate start and end times
-        Date endTime = new Date();
-        Date startTime = new Date(endTime.getTime() - OBS_TIME);
-        int period = 60; // 5 minutes
-
-        // Print the arguments
-        System.out.println("Namespace: AWS/EC2");
-        System.out.println("MetricName: CPUUtilization");
-        System.out.println("InstanceId: " + instanceId);
-        System.out.printf("Period: %d seconds\n", period);
-        System.out.println("StartTime: " + startTime);
-        System.out.println("EndTime: " + endTime);
-        System.out.println("Statistics: Average");
-
-        // get the metric
-        GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
-                .withNamespace("AWS/EC2")
-                .withMetricName("CPUUtilization")
-                .withDimensions(new Dimension().withName("InstanceId").withValue(instanceId))
-                .withPeriod(period)
-                .withStartTime(startTime)
-                .withEndTime(endTime)
-                .withStatistics("Average");
-
-        List<Datapoint> datapoints = this.cloudWatch.getMetricStatistics(request).getDatapoints();
-
-        if (datapoints.size() == 0) {
-            System.out.println("no CPU measurment was made - list of datapoints is empty. Assuming load is low");
-            return 0;
-        }
-
-        OptionalDouble cpuUsageOpt = datapoints.stream()
-                .mapToDouble(Datapoint::getAverage).average();
-
-        if (!cpuUsageOpt.isPresent()) {
-            throw new RuntimeException("no CPU measurment was made, average failed");
-        }
-
-        double cpuUsage = cpuUsageOpt.getAsDouble();
-
-        System.out.printf("The average CPU usage computed for the last minute for %s is %f\n",
-                instanceId, cpuUsage);
-
-        return cpuUsage;
     }
 
     public Optional<Pair<String, Integer>> callLambda(String functionName, String jsonPayload) {
