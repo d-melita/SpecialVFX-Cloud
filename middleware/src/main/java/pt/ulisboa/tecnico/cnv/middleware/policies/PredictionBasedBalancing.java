@@ -11,7 +11,11 @@ import pt.ulisboa.tecnico.cnv.middleware.Worker;
 import pt.ulisboa.tecnico.cnv.middleware.estimator.Estimator;
 import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
 
-// TODO: add comments
+/**
+ * Balancing regime that keeps that of each queue in the system and uses that
+ * to (together with an estimate for time for current request), decide whether
+ * to redirect the request to a worker (if so which worker) or a lambda.
+ */
 public class PredictionBasedBalancing implements LBPolicy {
     private Estimator estimator;
     private Map<Worker, Queue<Job>> status;

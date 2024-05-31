@@ -52,7 +52,6 @@ public class DynamoWriterProduction implements DynamoWriter {
         dynamoDB.putItem(putItemRequest);
     }
 
-    // TODO: move to this - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/JavaDocumentAPIItemCRUD.html#BatchWriteDocumentAPIJava
     @Override
     public void pushMetrics(List<WorkerMetric> metrics) {
         for (WorkerMetric metric: metrics) {

@@ -24,8 +24,6 @@ public class LoadBalancerHandler implements HttpHandler {
         String query = requestedUri.getRawQuery();
         System.out.println(query);
 
-        // TODO
-
         he.sendResponseHeaders(200, 0);
     }
 }

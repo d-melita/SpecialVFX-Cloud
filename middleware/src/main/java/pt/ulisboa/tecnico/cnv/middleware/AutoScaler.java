@@ -76,8 +76,4 @@ public class AutoScaler implements Runnable {
         daemon = new Thread(this);
         daemon.start();
     }
-
-    public void waitFor() {
-        // TODO
-    }
 }

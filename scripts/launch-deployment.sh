@@ -5,7 +5,6 @@ source config.sh
 echo "Launching Load Balancer and Auto Scaler..."
 
 # run new instance
-# TODO: name the instance
 aws ec2 run-instances \
 	--image-id resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 \
 	--instance-type t2.micro \

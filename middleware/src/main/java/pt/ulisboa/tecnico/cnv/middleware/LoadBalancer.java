@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.cnv.middleware;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -77,7 +78,16 @@ public class LoadBalancer implements HttpHandler, Runnable {
             throw new RuntimeException("Trying to remove existing worker.");
         }
 
-        // TODO: wait for worker queue to be empty
+        // wait for worker queue to be empty
+        Queue<Job> q = this.status.remove(worker);
+        while (q.size() > 0) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+
+            }
+        }
 
         this.status.remove(worker);
     }
@@ -92,16 +102,28 @@ public class LoadBalancer implements HttpHandler, Runnable {
         System.out.println("Load balancer just got a new request");
         Optional<Worker> optWorker = this.policy.choose(exchange, this.awsDashboard.getMetrics());
 
-        // TODO - Add here try again logic - maybe calling lambdas/workers return a flag or true/false if it was successful or not
-        // if not successful, try again with another worker or lambda and do so while #attempts < threshold ?
         try {
-            if (!optWorker.isPresent()) {
-                System.out.println("No good workers available, invoking lambda");
-                invokeLambda(exchange);
-                return;
+            boolean good = false;
+            int tries = 0;
+            byte[] content = exchange.getRequestBody().readAllBytes();
+            while (!good && tries < 3) {
+                InputStream copy = new ByteArrayInputStream(content);
+                exchange.setStreams(copy, null);
+
+                tries += 1;
+                if (!optWorker.isPresent()) {
+                    System.out.println("No good workers available, invoking lambda");
+                    good = invokeLambda(exchange);
+                } else {
+                    System.out.println("Worker selected, forwarding the request");
+                    good = forwardTo(optWorker.get(), exchange);
+                }
             }
-            System.out.println("Worker selected, forwarding the request");
-            forwardTo(optWorker.get(), exchange);
+
+            if (!good) { 
+                exchange.sendResponseHeaders(500, 0);
+                exchange.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
@@ -112,7 +134,7 @@ public class LoadBalancer implements HttpHandler, Runnable {
     /**
      * Invokes lambda to handle request.
      */
-    private void invokeLambda(HttpExchange exchange) throws IOException {
+    private boolean invokeLambda(HttpExchange exchange) throws IOException {
 
         System.out.println("Invoke lambda called");
         String lambdaName = exchange.getRequestURI().toString().split("\\?")[0].substring(1);
@@ -120,10 +142,7 @@ public class LoadBalancer implements HttpHandler, Runnable {
         Optional<Pair<String, Integer>> lambdaResponse = this.awsInterface.callLambda(lambdaName, json);
 
         if (lambdaResponse.isEmpty()) {
-            // TODO - maybe try again after failing and #attempts < threshold?
-            exchange.sendResponseHeaders(500, 0);
-            exchange.close();
-            return;
+            return false;
         }
 
         String response = lambdaResponse.get().getKey();
@@ -132,12 +151,13 @@ public class LoadBalancer implements HttpHandler, Runnable {
         OutputStream os = exchange.getResponseBody();
         os.write(response.getBytes());
         exchange.close();
+        return true;
     }
 
     /*
      * Forwards request to running worker.
      */
-    private void forwardTo(Worker worker, HttpExchange exchange) throws IOException {
+    private boolean forwardTo(Worker worker, HttpExchange exchange) throws IOException {
         System.out.printf("Forwarding request to worker %s\n", worker.getId());
         System.out.printf("The method is %s\n", exchange.getRequestMethod());
 
@@ -176,6 +196,10 @@ public class LoadBalancer implements HttpHandler, Runnable {
         // get the response from worker
         InputStream responseStream = forwardCon.getInputStream();
 
+        if (forwardCon.getResponseCode() != 200) {
+            return false;
+        }
+
         // update information with actual time taken
         this.estimator.updateInfo(exchange,  System.nanoTime() - start);
 
@@ -201,6 +225,7 @@ public class LoadBalancer implements HttpHandler, Runnable {
         outputStream.close();
         responseStream.close();
         forwardCon.disconnect();
+        return true;
     }
 
     /**
@@ -233,12 +258,5 @@ public class LoadBalancer implements HttpHandler, Runnable {
         String bodyEncoded = Base64.getEncoder().encodeToString(body);
 
         return String.format("{\"uri\": \"%s\", \"body\": \"%s\"}", uri, bodyEncoded);
-    }
-
-    /**
-     * Decodes the JSON response and replies on exchange.
-     */
-    private void decodeJsonToResponse(HttpExchange exchange, String json) {
-        // TODO 
     }
 }

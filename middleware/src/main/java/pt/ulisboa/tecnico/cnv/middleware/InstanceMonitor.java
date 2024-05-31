@@ -46,7 +46,6 @@ public class InstanceMonitor implements Runnable {
         this.awsInterface = awsInterface;
     }
 
-    // FIXME: get cpu usage works as a keep alive
     public double getCpuUsage(Worker worker) {
         try {
             // get cpu usage of an instance

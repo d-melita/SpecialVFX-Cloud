@@ -18,7 +18,6 @@ public class ProductionWorker extends Worker {
   }
 
   public int getPort() {
-    // FIXME move constant to web server
     return LoadBalancer.WORKER_PORT;
   }
 

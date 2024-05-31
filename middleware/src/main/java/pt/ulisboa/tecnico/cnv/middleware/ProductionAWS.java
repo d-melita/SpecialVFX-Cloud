@@ -167,7 +167,6 @@ public class ProductionAWS implements AWSInterface {
         TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
         termInstanceReq.withInstanceIds(instance.getInstanceId());
         TerminateInstancesResult result = this.ec2.terminateInstances(termInstanceReq);
-        // TODO: check if correct
         if (result.getTerminatingInstances().size() != 1) {
             throw new RuntimeException("Failed to terminate instance.");
         }
@@ -191,7 +190,6 @@ public class ProductionAWS implements AWSInterface {
             String response = Base64.getEncoder().encodeToString(bytes);
             return Optional.of(new Pair<>(response, statusCode));
         } catch (Exception e) {
-            // TODO: improve error handling 
             e.printStackTrace();
             throw new RuntimeException(e);
         }

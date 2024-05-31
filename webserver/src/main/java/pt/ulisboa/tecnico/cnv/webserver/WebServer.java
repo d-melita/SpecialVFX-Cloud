@@ -79,7 +79,6 @@ public class WebServer {
                     pendingStats.put(metric);
                     System.out.printf("request done - %s\n", metric.toString());
                 } catch (InterruptedException e) {
-                    // TODO: check if I don't want to die
                     e.printStackTrace();
                 }
             } else {
@@ -124,7 +123,6 @@ public class WebServer {
                     pendingStats.put(metric);
                     System.out.printf("request done - %s\n", metric.toString());
                 } catch (InterruptedException e) {
-                    // TODO: check if I don't want to die
                     e.printStackTrace();
                 }
             } else {
@@ -235,7 +233,6 @@ public class WebServer {
                     pendingStats.put(metric);
                     System.out.printf("request done - %s\n", metric.toString());
                 } catch (InterruptedException e) {
-                    // TODO: check if I don't want to die
                     e.printStackTrace();
                 }
             } else {
@@ -274,11 +271,9 @@ public class WebServer {
                     }
                 }
             } catch (InterruptedException e) {
-                // TODO: check if I don't want to die
                 e.printStackTrace();
             }
         } catch (IOException e) {
-            // TODO: check if I don't want to die
             e.printStackTrace();
         }
     }
