@@ -177,8 +177,6 @@ public class WebServer {
                 int coff = Integer.parseInt(parameters.get("coff"));
                 int roff = Integer.parseInt(parameters.get("roff"));
 
-                // FIXME: probably remove this part
-
                 // duplicate stream with request body
                 byte[] content = exchange.getRequestBody().readAllBytes();
                 InputStream stream = new ByteArrayInputStream(content);
