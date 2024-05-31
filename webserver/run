@@ -12,4 +12,4 @@ echo "Starting server at $1"
 java \
 	-cp target/webserver-1.0.0-SNAPSHOT-jar-with-dependencies.jar \
 	-javaagent:$JAVASSIST_JAR_PATH=$TOOL:$PKG_NAMES:$WRITE_DEST \
-	pt.ulisboa.tecnico.cnv.webserver.WebServer $1 &> /tmp/vfxserver.log &
+	pt.ulisboa.tecnico.cnv.webserver.WebServer $1 id0 &> /tmp/vfxserver.log &

@@ -128,23 +128,6 @@ public class InstanceMonitor implements Runnable {
         return metrics;
     }
 
-    // public List<WorkerMetric> getMetric(Worker worker) throws IOException, ClassNotFoundException {
-    //
-    //     String urlStr = "http://" + worker.getIP() + ":" + worker.getPort() + "/stats";
-    //     System.out.printf("Trying to get metric from %s\n", urlStr);
-    //     URL url = new URL(urlStr);
-    //     HttpURLConnection con = (HttpURLConnection) url.openConnection();
-    //     con.setRequestMethod("GET");
-    //
-    //     ObjectInputStream in = new ObjectInputStream(con.getInputStream());
-    //
-    //     List<WorkerMetric> metrics = (List<WorkerMetric>) in.readObject();
-    //
-    //     in.close();
-    //     con.disconnect();
-    //     return metrics;
-    // }
-
     public void start() {
         this.daemon = new Thread(this);
         daemon.start();

@@ -129,11 +129,11 @@ public class TimeInstRatioBasedScaling implements ASPolicy {
         
         // to decrease, low cpu usage
 
-        if (average > this.highThreshold && ratioSlope > 0 ) {
+        if (cpu > this.highThreshold && ratioSlope > 0 ) {
             return ScalingDecision.Increase;
         }
 
-        if (average < lowThreshold && metrics.size() > 1) {
+        if (cpu < lowThreshold && metrics.size() > 1) {
             return ScalingDecision.Reduce;
         }
 

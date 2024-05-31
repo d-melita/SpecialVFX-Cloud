@@ -225,7 +225,22 @@ public class ProductionAWS implements AWSInterface {
     }
 
     public List<WorkerMetric> getMetricsForSince(Worker w, long since) {
-        // TODO
+
+        String filterExpression = "SeqNb > :seqVal AND ReplicaID = :idVal";
+        Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
+        expressionAttributeValues.put(":seqVal", AttributeValue.builder().n(String.valueOf(since)).build());
+        expressionAttributeValues.put(":idVal", AttributeValue.builder().s(w.getId()).build());
+
+        ScanRequest scanRequest = ScanRequest.builder()
+            .tableName(DYNAMO_DB_TABLE_NAME)
+            .filterExpression(filterExpression)
+            .expressionAttributeValues(expressionAttributeValues)
+            .build();
+
+        ScanResponse response = dynamoDB.scan(scanRequest);
+
+        // TODO: parse back into worker metrics
+        response.items().forEach(item -> System.out.println(item));
         return new ArrayList<>();
     }
 }

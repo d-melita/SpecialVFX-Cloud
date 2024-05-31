@@ -40,7 +40,7 @@ public class WebServer {
     private static String outFile = "/tmp/randomFileForLogs.dsa";
     private static BlockingQueue<WorkerMetric> pendingStats = new LinkedBlockingQueue<>();
     private static BlockingQueue<WorkerMetric> statsServiceQueue = new LinkedBlockingQueue<>();
-    private static boolean DYNAMO_PRODUCTION = false;
+    private static boolean DYNAMO_PRODUCTION = true;
 
     private static DynamoWriter dynamoWriter;
 
@@ -111,7 +111,7 @@ public class WebServer {
 
             Map<String, Long> rawStats = VFXMetrics.getStats();
 
-            // get body sizevamos la ver se
+            // get body size
             long bodySize = Long.parseLong(exchange.getRequestHeaders().getFirst("Content-Length"));
 
             if (idOpt.get().isPresent()) {
@@ -295,12 +295,18 @@ public class WebServer {
 
     public static void main(String[] args) throws Exception {
         int port;
-        if (args.length == 1) {
+        AtomicReference<Optional<String>> idOpt = new AtomicReference(Optional.empty());
+        if (args.length > 0) {
             try {
                 port = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
                 System.out.println("Invalid port number. Please provide a valid integer.");
                 return;
+            }
+
+            if (args.length == 2) {
+                idOpt.set(Optional.of(args[1]));
+                System.out.printf("Setting id to %s\n", args[1]);
             }
         } else {
             port = 8000;
@@ -312,7 +318,6 @@ public class WebServer {
             dynamoWriter = new DynamoWriterDummy(String.valueOf(port));
         }
 
-        AtomicReference<Optional<String>> idOpt = new AtomicReference(Optional.empty());
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.createContext("/", new WrapperHandler(idOpt, new RootHandler()));

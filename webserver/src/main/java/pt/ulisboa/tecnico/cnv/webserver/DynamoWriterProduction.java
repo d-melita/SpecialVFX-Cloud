@@ -29,17 +29,29 @@ public class DynamoWriterProduction implements DynamoWriter {
     }
 
     private void pushSingleMetric(WorkerMetric metric) {
-        // TODO - fix
-        Map<String, AttributeValue> item = new HashMap<>();
-        item.put("RequestParams", new AttributeValue().withS(metric.getUri()));
-        item.put("RawData", new AttributeValue().withM(metric.getRawData().entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> new AttributeValue().withN(e.getValue().toString())))));
-        item.put("Timestamp", new AttributeValue().withS(metric.getTimestamp().toString()));
+        String type = metric.getUri().split("\\?")[0].substring(1);
+        Map<String, AttributeValue> parameters = new HashMap<>();
+        parameters.put("bodySize", new AttributeValue().withN(String.valueOf(metric.getBodySize())));
+        if (type.equals("raytracer")) {
+            Map<String, String> allParams = queryToMap(metric.getUri()); 
+            parameters.put("wcols", new AttributeValue().withN(allParams.get("wcols")));
+            parameters.put("wrows", new AttributeValue().withN(allParams.get("wrows")));
+        }
 
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("RawData", new AttributeValue().withM(parameters));
+        item.put("ReplicaID", new AttributeValue().withS(metric.getWid()));
+        item.put("SeqNb", new AttributeValue().withN(String.valueOf(metric.getSeq())));
+        item.put("ninsts", new AttributeValue().withN(String.valueOf(metric.getRawData().get("ninsts"))));
+        item.put("duration", new AttributeValue().withN(String.valueOf(metric.getDuration())));
+        item.put("type", new AttributeValue().withS(type));
+
+        System.out.printf("Trying to write metric to table called %s\n", DYNAMO_DB_TABLE_NAME);
         PutItemRequest putItemRequest = new PutItemRequest(DYNAMO_DB_TABLE_NAME, item);
         dynamoDB.putItem(putItemRequest);
     }
 
+    // TODO: move to this - https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/JavaDocumentAPIItemCRUD.html#BatchWriteDocumentAPIJava
     @Override
     public void pushMetrics(List<WorkerMetric> metrics) {
         for (WorkerMetric metric: metrics) {
@@ -56,5 +68,22 @@ public class DynamoWriterProduction implements DynamoWriter {
         for (Map<String, AttributeValue> item : result.getItems()) {
             System.out.println(item);
         }
+    }
+
+
+    public Map<String, String> queryToMap(String query) {
+        if (query == null) {
+            return null;
+        }
+        Map<String, String> result = new HashMap<>();
+        for (String param : query.split("&")) {
+            String[] entry = param.split("=");
+            if (entry.length > 1) {
+                result.put(entry[0], entry[1]);
+            } else {
+                result.put(entry[0], "");
+            }
+        }
+        return result;
     }
 }
