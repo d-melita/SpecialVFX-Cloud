@@ -15,7 +15,7 @@ import pt.ulisboa.tecnico.cnv.middleware.policies.CpuBasedBalancing;
 public class WebServer {
  
     // FIXME: there are two production variables
-    private static boolean PRODUCTION = false;
+    private static boolean PRODUCTION = true;
 
     public static void main(String[] args) throws Exception {
 
@@ -46,6 +46,6 @@ public class WebServer {
         System.out.println("Instance monitor started");
 
         // FIXME: hack !
-        Thread.sleep(10000);
+        // Thread.sleep(10000);
     }
 }

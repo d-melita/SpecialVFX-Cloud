@@ -73,7 +73,7 @@ public class WebServer {
             if (idOpt.get().isPresent()) {
                 String wid = idOpt.get().get();
                 // enrich raw stats with context
-                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), new HashMap<>(), rawStats, Instant.now(), bodySize, endTime-startTime);
+                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), new HashMap<>(), rawStats, bodySize, endTime-startTime);
 
                 try {
                     pendingStats.put(metric);
@@ -118,7 +118,7 @@ public class WebServer {
                 String wid = idOpt.get().get();
 
                 // enrich raw stats with context
-                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), new HashMap<>(), rawStats, Instant.now(), bodySize, endTime-startTime);
+                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), new HashMap<>(), rawStats, bodySize, endTime-startTime);
 
                 try {
                     pendingStats.put(metric);
@@ -231,7 +231,7 @@ public class WebServer {
                 String wid = idOpt.get().get();
 
                 // enrich raw stats with context
-                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), parameters, rawStats, Instant.now(), bodySize, endTime-startTime);
+                WorkerMetric metric = new WorkerMetric(wid, exchange.getRequestURI().toString(), parameters, rawStats, bodySize, endTime-startTime);
 
                 try {
                     pendingStats.put(metric);

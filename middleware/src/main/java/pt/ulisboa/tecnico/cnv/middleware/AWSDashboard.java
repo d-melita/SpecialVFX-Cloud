@@ -5,12 +5,10 @@ import java.util.function.Consumer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.ec2.model.Instance;
 import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
 
 public class AWSDashboard {
-    private AmazonCloudWatch cloudWatch;
 
     // Map of instances that are currently running and their metrics
     private Map<Worker, Optional<AggregateWorkerMetrics>> metrics = new ConcurrentHashMap();

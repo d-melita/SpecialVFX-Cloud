@@ -1,6 +1,5 @@
 package pt.ulisboa.tecnico.cnv.middleware;
 
-import com.amazonaws.services.cloudwatch.model.Datapoint;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder;
@@ -25,13 +24,8 @@ import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
 import com. amazonaws. services. ec2.model. TerminateInstancesResult;
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
-import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
 import pt.ulisboa.tecnico.cnv.middleware.Utils.Pair;
 import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
-import com.amazonaws.services.cloudwatch.model.Datapoint;
-import com.amazonaws.services.cloudwatch.model.Dimension;
-import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.lambda.AWSLambda;
 import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
@@ -39,7 +33,7 @@ import com.amazonaws.services.lambda.model.InvokeRequest;
 import com.amazonaws.services.lambda.model.InvokeResult;
 import com.amazonaws.services.lambda.model.ServiceException;
 import com.amazonaws.services.lambda.AWSLambda;
-
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.URL;
@@ -50,6 +44,11 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
+import java.nio.ByteBuffer;
+import java.util.Base64;
 
 /**
  * Implementation of AWSInteface that actually interacts with AWS and creates
@@ -100,8 +99,6 @@ public class ProductionAWS implements AWSInterface {
 
         this.dynamoDB = AmazonDynamoDBAsyncClientBuilder.standard().withRegion(AWS_REGION)
                 .withCredentials(new EnvironmentVariableCredentialsProvider()).build();
-
-        this.createTableIfNotExists();
 
     }
 
@@ -178,69 +175,58 @@ public class ProductionAWS implements AWSInterface {
     }
 
     public Optional<Pair<String, Integer>> callLambda(String functionName, String jsonPayload) {
+        System.out.printf("Calling lambda %s\n", functionName);
         InvokeRequest invokeRequest = new InvokeRequest()
                 .withFunctionName(functionName)
                 .withPayload(jsonPayload);
 
         try {
+            System.out.printf("About to invoke\n");
             InvokeResult result = this.lambdaClient.invoke(invokeRequest);
+            System.out.printf("Got result\n");
             int statusCode = result.getStatusCode();
-            String response = new String(result.getPayload().array(), StandardCharsets.UTF_8);
+            ByteBuffer buffer = result.getPayload();
+            byte[] bytes = new byte[buffer.remaining()];
+            buffer.get(bytes);
+            String response = Base64.getEncoder().encodeToString(bytes);
             return Optional.of(new Pair<>(response, statusCode));
-        } catch (ServiceException e) {
+        } catch (Exception e) {
             // TODO: improve error handling 
             e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
 
-    /*
-     * Create DynamoDB table if it does not exist yet
-     * Stores statistics about each request
-     */
-    private void createTableIfNotExists() {
-        // Create a table with a primary hash key named 'name', which holds a string
-        CreateTableRequest createTableRequest = new CreateTableRequest()
-                .withTableName(DYNAMO_DB_TABLE_NAME)
-                .withAttributeDefinitions(new AttributeDefinition()
-                        .withAttributeName("RequestParams")
-                        .withAttributeType("S"))
-                .withKeySchema(new KeySchemaElement()
-                        .withAttributeName("RequestParams")
-                        .withKeyType("HASH"))
-                .withProvisionedThroughput(new ProvisionedThroughput()
-                        .withReadCapacityUnits(1L)
-                        .withWriteCapacityUnits(1L))
-                .withTableName("STANDARD");
-
-        // Create table if it does not exist yet
-        TableUtils.createTableIfNotExists(dynamoDB, createTableRequest);
-
-        try {
-            // wait for the table to move into ACTIVE state
-            TableUtils.waitUntilActive(dynamoDB, DYNAMO_DB_TABLE_NAME);
-        } catch (InterruptedException e) {
-               e.printStackTrace();
-        }
-    }
-
     public List<WorkerMetric> getMetricsForSince(Worker w, long since) {
-
         String filterExpression = "SeqNb > :seqVal AND ReplicaID = :idVal";
         Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
-        expressionAttributeValues.put(":seqVal", AttributeValue.builder().n(String.valueOf(since)).build());
-        expressionAttributeValues.put(":idVal", AttributeValue.builder().s(w.getId()).build());
+        expressionAttributeValues.put(":seqVal", new AttributeValue().withN(String.valueOf(since)));
+        expressionAttributeValues.put(":idVal", new AttributeValue().withS(w.getId()));
 
-        ScanRequest scanRequest = ScanRequest.builder()
-            .tableName(DYNAMO_DB_TABLE_NAME)
-            .filterExpression(filterExpression)
-            .expressionAttributeValues(expressionAttributeValues)
-            .build();
+        ScanRequest scanRequest = (new ScanRequest())
+            .withTableName(DYNAMO_DB_TABLE_NAME)
+            .withFilterExpression(filterExpression)
+            .withExpressionAttributeValues(expressionAttributeValues);
 
-        ScanResponse response = dynamoDB.scan(scanRequest);
+        ScanResult response = dynamoDB.scan(scanRequest);
 
-        // TODO: parse back into worker metrics
-        response.items().forEach(item -> System.out.println(item));
-        return new ArrayList<>();
+        response.getItems().forEach(item -> System.out.println(item));
+        return response.getItems().stream().map(item -> {
+            System.out.printf("Parsing %s\n", item.toString());
+            String wid = item.get("ReplicaID").getS();
+            String uri = item.get("uri").getS();
+            Map<String, AttributeValue> parametersAws = item.get("RawData").getM();
+            Map<String, Long> parameters = new HashMap<>();
+            for (Map.Entry<String, AttributeValue> entry: parametersAws.entrySet()) {
+                parameters.put(entry.getKey(), Long.parseLong(entry.getValue().getN()));
+            }
+
+            long ninsts = Long.parseLong(item.get("ninsts").getN());
+            parameters.put("ninsts", ninsts);
+            long bodySize = parameters.get("bodySize");
+            long duration = Long.parseLong(item.get("duration").getN());
+
+            return new WorkerMetric(wid, uri, parameters, bodySize, duration);
+        }).collect(Collectors.toList());
     }
 }

@@ -60,6 +60,7 @@ function main() {
     # Remove a formatting string (remove everything before the comma).
     sed -i 's/^[^,]*,//' $result
 
+    echo $result
     # Decode from Base64.
     base64 -d $result > $output_file
 

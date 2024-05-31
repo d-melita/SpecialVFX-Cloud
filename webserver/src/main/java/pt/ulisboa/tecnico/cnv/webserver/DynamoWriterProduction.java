@@ -45,6 +45,7 @@ public class DynamoWriterProduction implements DynamoWriter {
         item.put("ninsts", new AttributeValue().withN(String.valueOf(metric.getRawData().get("ninsts"))));
         item.put("duration", new AttributeValue().withN(String.valueOf(metric.getDuration())));
         item.put("type", new AttributeValue().withS(type));
+        item.put("uri", new AttributeValue().withS(metric.getUri()));
 
         System.out.printf("Trying to write metric to table called %s\n", DYNAMO_DB_TABLE_NAME);
         PutItemRequest putItemRequest = new PutItemRequest(DYNAMO_DB_TABLE_NAME, item);

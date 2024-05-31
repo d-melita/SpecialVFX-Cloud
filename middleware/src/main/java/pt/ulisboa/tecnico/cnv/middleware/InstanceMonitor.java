@@ -1,13 +1,8 @@
 package pt.ulisboa.tecnico.cnv.middleware;
 
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
-import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
 import pt.ulisboa.tecnico.cnv.middleware.metrics.AggregateWorkerMetrics;
 import pt.ulisboa.tecnico.cnv.common.WorkerMetric;
-import com.amazonaws.services.cloudwatch.model.Datapoint;
-import com.amazonaws.services.cloudwatch.model.Dimension;
-import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
 import com.amazonaws.services.ec2.model.Instance;
 
 import java.io.ObjectInputStream;
@@ -25,8 +20,6 @@ import java.util.Optional;
 public class InstanceMonitor implements Runnable {
 
     private static final String AWS_REGION = System.getenv("AWS_REGION");
-
-    private AmazonCloudWatch cloudWatch;
 
     private AWSDashboard awsDashboard;
 
@@ -83,7 +76,8 @@ public class InstanceMonitor implements Runnable {
             return cpuUsage;
         } catch (IOException e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
+            // throw new RuntimeException(e);
+            return 0;
         }
     }
 

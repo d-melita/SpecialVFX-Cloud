@@ -1,5 +1,7 @@
 #! /usr/bin/env bash
 
+WORKER_PORT=8000
+
 source ./config.sh
 
 # install java
@@ -26,7 +28,7 @@ cmd="cd $TARGET_DIR/project && MAVEN_OPTS='-Xmx512m' mvn clean package"
 ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat instance.dns) $cmd || exit 1
 
 # setup web server to start on instance launch
-java_cmd="cd /home/ec2-user/vfx-studio/project/webserver; ./run"
+java_cmd="cd /home/ec2-user/vfx-studio/project/webserver; export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID; export AWS_SECRET_KEY=$AWS_SECRET_ACCESS_KEY; export AWS_REGION=$AWS_REGION; export DYNAMO_DB_TABLE_NAME=$DYNAMO_DB_TABLE_NAME; ./run $WORKER_PORT unknown"
 cmd="echo \"$java_cmd &\" | sudo tee -a /etc/rc.local; sudo chmod +x /etc/rc.local"
 ssh -o StrictHostKeyChecking=no -i $AWS_EC2_SSH_KEYPAR_PATH ec2-user@$(cat instance.dns) $cmd
 

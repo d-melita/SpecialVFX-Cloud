@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.cnv.common;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.time.Instant;
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
@@ -17,17 +18,25 @@ public class WorkerMetric implements Serializable {
 	private String uri;
 	private Map<String, String> parameters;
 	private Map<String, Long> rawData;
-	private Instant ts;
 	private long bodySize;
 	private long duration;
 
-	public WorkerMetric(String wid, String uri, Map<String, String> parameters, Map<String, Long> rawData, Instant ts, long bodySize, long duration) {
+	public WorkerMetric(String wid, String uri, Map<String, Long> unifiedParameters, long bodySize, long duration) {
+		this.seq = global.getAndIncrement();
+		this.wid = wid;
+		this.uri = uri;
+		this.parameters = new HashMap<>();
+		this.rawData = unifiedParameters;
+		this.bodySize = bodySize;
+		this.duration = duration;
+	}
+
+	public WorkerMetric(String wid, String uri, Map<String, String> parameters, Map<String, Long> rawData, long bodySize, long duration) {
 		this.seq = global.getAndIncrement();
 		this.wid = wid;
 		this.uri = uri;
 		this.parameters = parameters;
 		this.rawData = rawData;
-		this.ts = ts;
 		this.bodySize = bodySize;
 		this.duration = duration;
 	}
@@ -50,10 +59,6 @@ public class WorkerMetric implements Serializable {
 
 	public Map<String, Long> getRawData() {
 		return this.rawData;
-	}
-
-	public Instant getTimestamp() {
-		return this.ts;
 	}
 
 	public long getBodySize() {
@@ -92,8 +97,7 @@ public class WorkerMetric implements Serializable {
 		    sb.setLength(sb.length() - 2);
 		}
 
-		sb.append("}, ts=").append(ts);
-		sb.append(", bodySize=").append(bodySize);
+		sb.append("}, bodySize=").append(bodySize);
 		sb.append(", duration=").append(duration);
 		sb.append('}');
 		return sb.toString();
@@ -128,9 +132,6 @@ public class WorkerMetric implements Serializable {
         }
 
         csvBuilder.append(',');
-
-        // Append timestamp
-        csvBuilder.append("ts=").append(ts).append(',');
 
         // Append bodySize
         csvBuilder.append("bodySize=").append(bodySize).append(',');

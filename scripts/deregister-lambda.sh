@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-aws lambda delete-function --function-name raytracer-lambda
-aws lambda delete-function --function-name enhanceimage-lambda
-aws lambda delete-function --function-name blurimage-lambda
+aws lambda delete-function --function-name raytracer
+aws lambda delete-function --function-name enhanceimage 
+aws lambda delete-function --function-name blurimage
 
 aws iam detach-role-policy \
 	--role-name lambda-role \

@@ -1,4 +1,6 @@
 #! /usr/bin/env bash
 
+# To run locally
+
 export PATH=$PATH:$(pwd)
 java -cp target/middleware-1.0.0-SNAPSHOT-jar-with-dependencies.jar pt.ulisboa.tecnico.cnv.middleware.WebServer
